@@ -18,8 +18,9 @@ All values 2s-complement signed 64-bit integers
 
 ## Opcodes
 
-- arradd value, arr, idx
+- arrins value, arr, idx
 - arrget dst, arr, idx
+- movimm dst, imm
 - mov dst, src
 - jmp dst
 - jeq/jne/jgt/jge/jlt/jle dst, v0, v1
