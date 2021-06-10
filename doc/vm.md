@@ -28,6 +28,8 @@ All values 2s-complement signed 64-bit integers
 - mul dst, v0, v1
 - div dst, v0, v1
 - mod dst, v0, v1
+- halt
+- noop
 
 ## Program parameters
 
@@ -44,20 +46,27 @@ TODO
 
 ```{}
 arr1[0]: min bid price or 0 if none
-arr1[price]: #bids at price
-arr2[0]: max offer price or 0 if none
-arr2[price]: #offers at price
-arr3[0]: my min bid price or 0 if none
-arr3[price]: #my bids at price
-arr4[0]: my max offer price or 0 if none
-arr4[price]: #my offers at price
+arr1[1]: max bid price or 0 if none
+arr2[price]: #bids at price
+
+arr3[0]: min offer price or 0 if none
+arr3[1]: max offer price or 0 if none
+arr4[price]: #offers at price
+
+arr5[0]: my min bid price or 0 if none
+arr5[0]: my max bid price or 0 if none
+arr6[price]: #my bids at price
+
+arr7[0]: my min offer price or 0 if none
+arr7[0]: my max offer price or 0 if none
+arr8[price]: #my offers at price
 ```
 
 ## Price revisions
 
 ```{}
-arr5[0]: 0 if reusing old bids, 1 if erasing old bids
-arr5[price]: #bids to add or subtract at price (negative result is error)
-arr6[0]: 0 if reusing old offers, 1 if erasing old offers
-arr6[price]: #offers to add or subtract at price (negative result is error)
+arr9[0]: 0 if reusing old bids, 1 if erasing old bids
+arr9[price]: #bids to add or subtract at price (negative result is error)
+arr10[0]: 0 if reusing old offers, 1 if erasing old offers
+arr10[price]: #offers to add or subtract at price (negative result is error)
 ```

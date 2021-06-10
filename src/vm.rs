@@ -3,11 +3,6 @@ use std::collections::HashMap;
 use regex::Regex;
 use lazy_static::lazy_static;
 
-const R0_IDX: RegIdx = RegIdx(0);
-const R1_IDX: RegIdx = RegIdx(1);
-const R2_IDX: RegIdx = RegIdx(2);
-const R3_IDX: RegIdx = RegIdx(3);
-const R10_IDX: RegIdx = RegIdx(10);
 const RP_IDX: RegIdx = RegIdx(15);
 
 pub struct ProgramInstance {
@@ -135,6 +130,7 @@ impl ProgramInstance {
     }
 }
 
+#[derive(Clone)]
 pub struct Program {
     instructions: Vec<Instruction>,
 }
@@ -538,6 +534,11 @@ impl Instruction {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const R0_IDX: RegIdx = RegIdx(0);
+    const R1_IDX: RegIdx = RegIdx(1);
+    const R2_IDX: RegIdx = RegIdx(2);
+    const R10_IDX: RegIdx = RegIdx(10);
 
     mod parse {
         use super::*;
