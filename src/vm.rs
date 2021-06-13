@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map};
 use regex::Regex;
 use lazy_static::lazy_static;
 
@@ -128,6 +128,14 @@ impl ProgramInstance {
             }
         }
     }
+
+    pub(crate) fn state(&self) -> &ExecutionState {
+        &self.state
+    }
+
+    pub(crate) fn state_mut(&mut self) -> &mut ExecutionState {
+        &mut self.state
+    }
 }
 
 #[derive(Clone)]
@@ -203,6 +211,23 @@ impl ExecutionState {
 
     pub fn incremement_rp(&mut self) {
         self.registers[RP_IDX.0 as usize].0 += 1;
+    }
+
+    pub fn iter_touched_values(&self, arr: u64) -> Box<dyn Iterator<Item = (u64, i64)>> {
+        Box::new(self.arrays.borrow().get(&arr).map(|array| &array.0).unwrap_or(&HashMap::default()).clone().into_iter())
+    }
+
+    pub(crate) fn array_touched_idxs(&self, arr: u64) -> Option<(u64, u64)> {
+        self.arrays
+            .borrow()
+            .get(&arr)
+            .map_or(None, |arr| {
+                if arr.0.len() > 0 {
+                    Some((*arr.0.keys().min().unwrap(), *arr.0.keys().max().unwrap()))
+                } else {
+                    None
+                }
+            })
     }
 }
 

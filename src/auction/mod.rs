@@ -70,6 +70,14 @@ pub struct Book {
 }
 
 impl Book {
+    pub fn insert_order(&mut self, order: Order) {
+        self.levels
+            .entry(order.price)
+            .or_default()
+            .orders
+            .push(order);
+    }
+
     fn order_bounds<F>(&self, predicate: F) -> Option<(Price, Price)>
     where 
         F: Fn(&&Order) -> bool,
@@ -126,13 +134,13 @@ impl Book {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct Level {
     orders: Vec<Order>,
 }
 
 #[derive(Clone)]
-struct Order {
+pub struct Order {
     participant: ParticipantId,
     side: Side,
     quantity: u64,
