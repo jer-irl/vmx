@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, hash_map};
+use std::collections::HashMap;
 use regex::Regex;
 use lazy_static::lazy_static;
 

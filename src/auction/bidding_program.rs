@@ -78,14 +78,14 @@ impl ProgramInstance {
     }
 
     pub fn write_result_into_book(&self, prev_book: &Book, result_book: &mut Book, participant_id: ParticipantId) {
-        let mut populate_previous_orders = |array_idx, bounds_accessor: fn(&Book, ParticipantId) -> Option<(Price, Price)>, side| {
+        let mut populate_previous_orders = |bounds_accessor: fn(&Book, ParticipantId) -> Option<(Price, Price)>, side, quantity_accessor: fn(&Book, Price, ParticipantId) -> i64| {
             if let Some((low_price, high_price)) = bounds_accessor(prev_book, participant_id) {
                 for price in low_price.0..=high_price.0 {
                     let price = Price(price);
                     let order = Order {
                         participant: participant_id,
                         side,
-                        quantity: self.vm_program_instance.state().array_read(array_idx, price.0) as u64,
+                        quantity: quantity_accessor(prev_book, price, participant_id),
                         price,
                     };
                     result_book.insert_order(order);
@@ -94,11 +94,11 @@ impl ProgramInstance {
         };
 
         if self.vm_program_instance.state().array_read(9, 0) == 0 {
-            populate_previous_orders(9, Book::bid_bounds_for_participant, Side::Bid);
+            populate_previous_orders(Book::bid_bounds_for_participant, Side::Bid, Book::bid_quantity_at_price_for_participant);
         }
 
         if self.vm_program_instance.state().array_read(10, 0) == 0 {
-            populate_previous_orders(10, Book::bid_bounds_for_participant, Side::Offer);
+            populate_previous_orders(Book::offer_bounds_for_participant, Side::Offer, Book::offer_quantity_at_price_for_participant);
         }
 
         let mut add_new_orders = |array_idx, side| {
@@ -106,10 +106,10 @@ impl ProgramInstance {
                 let order = Order {
                     participant: participant_id,
                     side,
-                    quantity: val as u64,
+                    quantity: val,
                     price: Price(idx),
                 };
-                result_book.insert_order(order);
+                result_book.update_or_insert_order(order);
             }
         };
 
