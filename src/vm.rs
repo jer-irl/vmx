@@ -1,7 +1,13 @@
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use regex::Regex;
-use lazy_static::lazy_static;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    ParseError,
+    ExecutionError,
+}
 
 const RP_IDX: RegIdx = RegIdx(15);
 
@@ -15,20 +21,30 @@ impl ProgramInstance {
         Self { program, state }
     }
 
-    pub fn execute_step(&mut self) -> Result<bool, ()> {
-        let instruction = self.program.instructions.get(self.state.register_read(RP_IDX) as usize).ok_or(())?;
+    pub fn execute_step(&mut self) -> Result<bool, Error> {
+        let instruction = self
+            .program
+            .instructions
+            .get(self.state.register_read(RP_IDX) as usize)
+            .ok_or(Error::ExecutionError)?;
         match instruction {
             Instruction::ArrIns { arr, idx, val } => {
                 self.state.array_insert(
-                    self.state.register_read(*arr) as u64, 
-                    self.state.register_read(*idx) as u64, 
-                    self.state.register_read(*val)
+                    self.state.register_read(*arr) as u64,
+                    self.state.register_read(*idx) as u64,
+                    self.state.register_read(*val),
                 );
                 self.state.incremement_rp();
                 Ok(true)
             }
             Instruction::ArrGet { dst, arr, idx } => {
-                self.state.register_write(*dst, self.state.array_read(self.state.register_read(*arr) as u64, self.state.register_read(*idx) as u64));
+                self.state.register_write(
+                    *dst,
+                    self.state.array_read(
+                        self.state.register_read(*arr) as u64,
+                        self.state.register_read(*idx) as u64,
+                    ),
+                );
                 self.state.incremement_rp();
                 Ok(true)
             }
@@ -38,17 +54,20 @@ impl ProgramInstance {
                 Ok(true)
             }
             Instruction::Mov { dst, src } => {
-                self.state.register_write(*dst, self.state.register_read(*src));
+                self.state
+                    .register_write(*dst, self.state.register_read(*src));
                 self.state.incremement_rp();
                 Ok(true)
             }
             Instruction::Jmp { adr } => {
-                self.state.register_write(RP_IDX, self.state.register_read(*adr));
+                self.state
+                    .register_write(RP_IDX, self.state.register_read(*adr));
                 Ok(true)
             }
             Instruction::Jeq { adr, v0, v1 } => {
                 if self.state.register_read(*v0) == self.state.register_read(*v1) {
-                    self.state.register_write(RP_IDX, self.state.register_read(*adr));
+                    self.state
+                        .register_write(RP_IDX, self.state.register_read(*adr));
                 } else {
                     self.state.incremement_rp();
                 }
@@ -56,7 +75,8 @@ impl ProgramInstance {
             }
             Instruction::Jne { adr, v0, v1 } => {
                 if self.state.register_read(*v0) != self.state.register_read(*v1) {
-                    self.state.register_write(RP_IDX, self.state.register_read(*adr));
+                    self.state
+                        .register_write(RP_IDX, self.state.register_read(*adr));
                 } else {
                     self.state.incremement_rp();
                 }
@@ -64,7 +84,8 @@ impl ProgramInstance {
             }
             Instruction::Jgt { adr, v0, v1 } => {
                 if self.state.register_read(*v0) > self.state.register_read(*v1) {
-                    self.state.register_write(RP_IDX, self.state.register_read(*adr));
+                    self.state
+                        .register_write(RP_IDX, self.state.register_read(*adr));
                 } else {
                     self.state.incremement_rp();
                 }
@@ -72,7 +93,8 @@ impl ProgramInstance {
             }
             Instruction::Jge { adr, v0, v1 } => {
                 if self.state.register_read(*v0) >= self.state.register_read(*v1) {
-                    self.state.register_write(RP_IDX, self.state.register_read(*adr));
+                    self.state
+                        .register_write(RP_IDX, self.state.register_read(*adr));
                 } else {
                     self.state.incremement_rp();
                 }
@@ -80,7 +102,8 @@ impl ProgramInstance {
             }
             Instruction::Jlt { adr, v0, v1 } => {
                 if self.state.register_read(*v0) < self.state.register_read(*v1) {
-                    self.state.register_write(RP_IDX, self.state.register_read(*adr));
+                    self.state
+                        .register_write(RP_IDX, self.state.register_read(*adr));
                 } else {
                     self.state.incremement_rp();
                 }
@@ -88,7 +111,8 @@ impl ProgramInstance {
             }
             Instruction::Jle { adr, v0, v1 } => {
                 if self.state.register_read(*v0) <= self.state.register_read(*v1) {
-                    self.state.register_write(RP_IDX, self.state.register_read(*adr));
+                    self.state
+                        .register_write(RP_IDX, self.state.register_read(*adr));
                 } else {
                     self.state.incremement_rp();
                 }
@@ -118,11 +142,11 @@ impl ProgramInstance {
                 self.state.incremement_rp();
                 Ok(true)
             }
-            Instruction::Halt { } => {
+            Instruction::Halt {} => {
                 self.state.incremement_rp();
                 Ok(false)
             }
-            Instruction::Noop { } => {
+            Instruction::Noop {} => {
                 self.state.incremement_rp();
                 Ok(true)
             }
@@ -133,6 +157,7 @@ impl ProgramInstance {
         &self.state
     }
 
+    #[cfg(test)]
     pub(crate) fn state_mut(&mut self) -> &mut ExecutionState {
         &mut self.state
     }
@@ -144,7 +169,7 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn try_from_str(s: &str) -> Result<Self, ()> {
+    pub fn try_from_str(s: &str) -> Result<Self, Error> {
         let instructions: Vec<_> = s
             .lines()
             .filter_map(|line| Instruction::try_from_line(line).expect("TODO"))
@@ -153,7 +178,9 @@ impl Program {
     }
 
     pub fn from_instructions(instructions: &[Instruction]) -> Self {
-        Self { instructions: instructions.to_vec() }
+        Self {
+            instructions: instructions.to_vec(),
+        }
     }
 }
 
@@ -194,11 +221,7 @@ impl ExecutionState {
     }
 
     pub fn array_read(&self, arr: u64, idx: u64) -> i64 {
-        self.arrays
-            .borrow_mut()
-            .entry(arr)
-            .or_default()
-            .get(idx)
+        self.arrays.borrow_mut().entry(arr).or_default().get(idx)
     }
 
     pub fn register_write(&mut self, idx: RegIdx, val: i64) {
@@ -214,20 +237,15 @@ impl ExecutionState {
     }
 
     pub fn iter_touched_values(&self, arr: u64) -> Box<dyn Iterator<Item = (u64, i64)>> {
-        Box::new(self.arrays.borrow().get(&arr).map(|array| &array.0).unwrap_or(&HashMap::default()).clone().into_iter())
-    }
-
-    pub(crate) fn array_touched_idxs(&self, arr: u64) -> Option<(u64, u64)> {
-        self.arrays
-            .borrow()
-            .get(&arr)
-            .map_or(None, |arr| {
-                if arr.0.len() > 0 {
-                    Some((*arr.0.keys().min().unwrap(), *arr.0.keys().max().unwrap()))
-                } else {
-                    None
-                }
-            })
+        Box::new(
+            self.arrays
+                .borrow()
+                .get(&arr)
+                .map(|array| &array.0)
+                .unwrap_or(&HashMap::default())
+                .clone()
+                .into_iter(),
+        )
     }
 }
 
@@ -318,9 +336,10 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn try_from_line(line: &str) -> Result<Option<Self>, ()> {
+    pub fn try_from_line(line: &str) -> Result<Option<Self>, Error> {
         lazy_static! {
-            static ref LINE_RE: Regex = Regex::new(r"(?x)
+            static ref LINE_RE: Regex = Regex::new(
+                r"(?x)
             (?P<opcode>[a-zA-z]{3,6})
             (?P<args>\s+
                 (
@@ -334,31 +353,33 @@ impl Instruction {
                         )
                     )
                 )
-            )?").expect("TODO");
+            )?"
+            )
+            .expect("TODO");
         }
 
         if line.chars().all(|c| c.is_whitespace()) {
-            return Ok(None)
+            return Ok(None);
         }
 
-        let captures = LINE_RE.captures(line).ok_or(())?;
+        let captures = LINE_RE.captures(line).ok_or(Error::ParseError)?;
         let opcode_match = captures.name("opcode");
         if opcode_match.is_none() {
             return Ok(None);
         }
-        match &opcode_match.unwrap().as_str().to_lowercase()[..] {
+        match &opcode_match.expect("TODO").as_str().to_lowercase()[..] {
             "arrins" => {
                 let val = captures.name("r1");
                 let arr = captures.name("r2");
                 let idx = captures.name("r3");
                 if let (Some(val), Some(arr), Some(idx)) = (val, arr, idx) {
-                    Ok(Some(Self::ArrIns { 
+                    Ok(Some(Self::ArrIns {
                         val: val.as_str().parse::<u8>().expect("TODO").into(),
                         arr: arr.as_str().parse::<u8>().expect("TODO").into(),
                         idx: idx.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "arrget" => {
@@ -366,13 +387,13 @@ impl Instruction {
                 let arr = captures.name("r2");
                 let idx = captures.name("r3");
                 if let (Some(dst), Some(arr), Some(idx)) = (dst, arr, idx) {
-                    Ok(Some(Self::ArrGet { 
+                    Ok(Some(Self::ArrGet {
                         dst: dst.as_str().parse::<u8>().expect("TODO").into(),
                         arr: arr.as_str().parse::<u8>().expect("TODO").into(),
                         idx: idx.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "movimm" => {
@@ -384,7 +405,7 @@ impl Instruction {
                         imm: imm.as_str().parse().expect("TODO"),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "mov" => {
@@ -396,7 +417,7 @@ impl Instruction {
                         src: src.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "jmp" => {
@@ -406,7 +427,7 @@ impl Instruction {
                         adr: adr.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "jeq" => {
@@ -420,7 +441,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "jne" => {
@@ -434,7 +455,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "jgt" => {
@@ -448,7 +469,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "jge" => {
@@ -462,7 +483,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "jlt" => {
@@ -476,7 +497,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "jle" => {
@@ -490,7 +511,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "add" => {
@@ -504,7 +525,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "mul" => {
@@ -518,7 +539,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "div" => {
@@ -532,7 +553,7 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
             "mod" => {
@@ -546,12 +567,12 @@ impl Instruction {
                         v1: v1.as_str().parse::<u8>().expect("TODO").into(),
                     }))
                 } else {
-                    Err(())
+                    Err(Error::ParseError)
                 }
             }
-            "halt" => Ok(Some(Self::Halt { })),
-            "noop" => Ok(Some(Self::Noop { })),
-            _ => Err(()),
+            "halt" => Ok(Some(Self::Halt {})),
+            "noop" => Ok(Some(Self::Noop {})),
+            _ => Err(Error::ParseError),
         }
     }
 }
@@ -569,7 +590,10 @@ mod tests {
         use super::*;
 
         fn check_arrins(line: &str, idx0: u8, idx1: u8, idx2: u8) {
-            if let Instruction::ArrIns { val, arr, idx } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::ArrIns { val, arr, idx } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(val, RegIdx::from(idx0));
                 assert_eq!(arr, RegIdx::from(idx1));
                 assert_eq!(idx, RegIdx::from(idx2));
@@ -588,7 +612,10 @@ mod tests {
         #[test]
         fn parse_arrget() {
             let line = "arrget r0 r1 r2";
-            if let Instruction::ArrGet { dst, arr, idx } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::ArrGet { dst, arr, idx } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(dst, R0_IDX);
                 assert_eq!(arr, R1_IDX);
                 assert_eq!(idx, R2_IDX);
@@ -598,7 +625,10 @@ mod tests {
         }
 
         fn check_movimm(line: &str, reg: u8, expected_imm: i32) {
-            if let Instruction::MovImm { dst, imm } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::MovImm { dst, imm } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(dst, RegIdx::from(reg));
                 assert_eq!(imm, expected_imm);
             } else {
@@ -614,7 +644,10 @@ mod tests {
         }
 
         fn check_mov(line: &str, idx0: u8, idx1: u8) {
-            if let Instruction::Mov { dst, src } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Mov { dst, src } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(dst, RegIdx::from(idx0));
                 assert_eq!(src, RegIdx::from(idx1));
             } else {
@@ -631,7 +664,10 @@ mod tests {
         #[test]
         fn parse_jmp() {
             let line = "jmp r0";
-            if let Instruction::Jmp { adr } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Jmp { adr } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(adr, R0_IDX);
             } else {
                 panic!("Could not parse line");
@@ -641,7 +677,10 @@ mod tests {
         #[test]
         fn parse_jeq() {
             let line = "jeq r0 r1 r2";
-            if let Instruction::Jeq { adr, v0, v1 } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Jeq { adr, v0, v1 } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(adr, R0_IDX);
                 assert_eq!(v0, R1_IDX);
                 assert_eq!(v1, R2_IDX);
@@ -653,7 +692,10 @@ mod tests {
         #[test]
         fn parse_jne() {
             let line = "jne r0 r1 r2";
-            if let Instruction::Jne { adr, v0, v1 } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Jne { adr, v0, v1 } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(adr, R0_IDX);
                 assert_eq!(v0, R1_IDX);
                 assert_eq!(v1, R2_IDX);
@@ -665,7 +707,10 @@ mod tests {
         #[test]
         fn parse_jgt() {
             let line = "jgt r0 r1 r2";
-            if let Instruction::Jgt { adr, v0, v1 } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Jgt { adr, v0, v1 } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(adr, R0_IDX);
                 assert_eq!(v0, R1_IDX);
                 assert_eq!(v1, R2_IDX);
@@ -677,7 +722,10 @@ mod tests {
         #[test]
         fn parse_jge() {
             let line = "jge r0 r1 r2";
-            if let Instruction::Jge { adr, v0, v1 } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Jge { adr, v0, v1 } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(adr, R0_IDX);
                 assert_eq!(v0, R1_IDX);
                 assert_eq!(v1, R2_IDX);
@@ -689,7 +737,10 @@ mod tests {
         #[test]
         fn parse_jlt() {
             let line = "jlt r0 r1 r2";
-            if let Instruction::Jlt { adr, v0, v1 } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Jlt { adr, v0, v1 } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(adr, R0_IDX);
                 assert_eq!(v0, R1_IDX);
                 assert_eq!(v1, R2_IDX);
@@ -701,7 +752,10 @@ mod tests {
         #[test]
         fn parse_jle() {
             let line = "jle r0 r1 r2";
-            if let Instruction::Jle { adr, v0, v1 } = Instruction::try_from_line(line).unwrap().unwrap() {
+            if let Instruction::Jle { adr, v0, v1 } = Instruction::try_from_line(line)
+                .expect("TODO")
+                .expect("TODO")
+            {
                 assert_eq!(adr, R0_IDX);
                 assert_eq!(v0, R1_IDX);
                 assert_eq!(v1, R2_IDX);
@@ -721,7 +775,7 @@ mod tests {
         fn parse_empty_line() {
             let result = Instruction::try_from_line("");
             assert!(result.is_ok());
-            assert!(result.unwrap().is_none());
+            assert!(result.expect("TODO").is_none());
         }
 
         #[test]
@@ -733,8 +787,7 @@ mod tests {
         #[test]
         fn parse_halt() {
             let result = Instruction::try_from_line("halt");
-            if let Ok(Some(Instruction::Halt { })) = result {
-                return
+            if let Ok(Some(Instruction::Halt {})) = result {
             } else {
                 panic!("Failed to parse Halt")
             }
@@ -743,8 +796,7 @@ mod tests {
         #[test]
         fn parse_noop() {
             let result = Instruction::try_from_line("NOOP");
-            if let Ok(Some(Instruction::Noop { })) = result {
-                return
+            if let Ok(Some(Instruction::Noop {})) = result {
             } else {
                 panic!("Failed to parse Noop")
             }
@@ -760,9 +812,11 @@ mod tests {
             let idx_register = R1_IDX;
             let val_register = R2_IDX;
 
-            let program = Program::from_instructions(&[
-                Instruction::ArrIns { arr: arr_register, idx: idx_register, val: val_register }
-            ]);
+            let program = Program::from_instructions(&[Instruction::ArrIns {
+                arr: arr_register,
+                idx: idx_register,
+                val: val_register,
+            }]);
 
             let mut state = ExecutionState::default();
             state.register_write(arr_register, 0);
@@ -781,9 +835,11 @@ mod tests {
             let idx_register = R1_IDX;
             let val_register = R2_IDX;
 
-            let program = Program::from_instructions(&[
-                Instruction::ArrIns { arr: arr_register, idx: idx_register, val: val_register },
-            ]);
+            let program = Program::from_instructions(&[Instruction::ArrIns {
+                arr: arr_register,
+                idx: idx_register,
+                val: val_register,
+            }]);
 
             let mut state = ExecutionState::default();
             state.register_write(arr_register, 0);
@@ -803,9 +859,11 @@ mod tests {
             let arr_register = R1_IDX;
             let idx_register = R2_IDX;
 
-            let program = Program::from_instructions(&[
-                Instruction::ArrGet { dst: dst_register, arr: arr_register, idx: idx_register },
-            ]);
+            let program = Program::from_instructions(&[Instruction::ArrGet {
+                dst: dst_register,
+                arr: arr_register,
+                idx: idx_register,
+            }]);
 
             let mut state = ExecutionState::default();
             state.register_write(dst_register, 345);
@@ -824,9 +882,11 @@ mod tests {
             let arr_register = R1_IDX;
             let idx_register = R2_IDX;
 
-            let program = Program::from_instructions(&[
-                Instruction::ArrGet { dst: dst_register, arr: arr_register, idx: idx_register },
-            ]);
+            let program = Program::from_instructions(&[Instruction::ArrGet {
+                dst: dst_register,
+                arr: arr_register,
+                idx: idx_register,
+            }]);
 
             let mut state = ExecutionState::default();
             state.register_write(dst_register, 345);
@@ -848,10 +908,22 @@ mod tests {
             let val3 = 0i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: val0 as i32},
-                Instruction::MovImm { dst: R1_IDX, imm: val1 as i32 },
-                Instruction::MovImm { dst: R2_IDX, imm: val2 as i32 },
-                Instruction::MovImm { dst: R0_IDX, imm: val3 as i32 },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: val0 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: val1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R2_IDX,
+                    imm: val2 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: val3 as i32,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -884,10 +956,22 @@ mod tests {
             let val0 = 123i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: val0 as i32 },
-                Instruction::Mov { dst: R1_IDX, src: R0_IDX },
-                Instruction::Mov { dst: R0_IDX, src: R2_IDX },
-                Instruction::Mov { dst: R2_IDX, src: R1_IDX },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: val0 as i32,
+                },
+                Instruction::Mov {
+                    dst: R1_IDX,
+                    src: R0_IDX,
+                },
+                Instruction::Mov {
+                    dst: R0_IDX,
+                    src: R2_IDX,
+                },
+                Instruction::Mov {
+                    dst: R2_IDX,
+                    src: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -923,11 +1007,16 @@ mod tests {
             let target_addr = 2i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: target_register, imm: target_addr as i32 },
-                Instruction::Noop { },
-                Instruction::Noop { },
-                Instruction::Noop { },
-                Instruction::Jmp { adr: target_register },
+                Instruction::MovImm {
+                    dst: target_register,
+                    imm: target_addr as i32,
+                },
+                Instruction::Noop {},
+                Instruction::Noop {},
+                Instruction::Noop {},
+                Instruction::Jmp {
+                    adr: target_register,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -966,8 +1055,13 @@ mod tests {
             let target_addr = 123i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: target_register, imm: target_addr as i32 },
-                Instruction::Jmp { adr: target_register },
+                Instruction::MovImm {
+                    dst: target_register,
+                    imm: target_addr as i32,
+                },
+                Instruction::Jmp {
+                    adr: target_register,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -977,7 +1071,7 @@ mod tests {
             assert_eq!(program_instance.state.register_read(RP_IDX), 1);
             assert_eq!(program_instance.execute_step(), Ok(true));
             assert_eq!(program_instance.state.register_read(RP_IDX), target_addr);
-            assert_eq!(program_instance.execute_step(), Err(()));
+            assert_eq!(program_instance.execute_step(), Err(Error::ExecutionError));
         }
 
         #[test]
@@ -988,12 +1082,32 @@ mod tests {
             let v2 = 321i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: eq_target_register, imm: eq_target as i32 },
-                Instruction::MovImm { dst: R0_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v2 as i32 },
-                Instruction::MovImm { dst: R2_IDX, imm: v1 as i32 },
-                Instruction::Jeq { adr: eq_target_register, v0: R0_IDX, v1: R1_IDX },
-                Instruction::Jeq { adr: eq_target_register, v0: R0_IDX, v1: R2_IDX },
+                Instruction::MovImm {
+                    dst: eq_target_register,
+                    imm: eq_target as i32,
+                },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v2 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R2_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::Jeq {
+                    adr: eq_target_register,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
+                Instruction::Jeq {
+                    adr: eq_target_register,
+                    v0: R0_IDX,
+                    v1: R2_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1016,12 +1130,32 @@ mod tests {
             let v2 = 321i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: ne_target_register, imm: ne_target as i32 },
-                Instruction::MovImm { dst: R0_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R2_IDX, imm: v2 as i32 },
-                Instruction::Jne { adr: ne_target_register, v0: R0_IDX, v1: R1_IDX },
-                Instruction::Jne { adr: ne_target_register, v0: R0_IDX, v1: R2_IDX },
+                Instruction::MovImm {
+                    dst: ne_target_register,
+                    imm: ne_target as i32,
+                },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R2_IDX,
+                    imm: v2 as i32,
+                },
+                Instruction::Jne {
+                    adr: ne_target_register,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
+                Instruction::Jne {
+                    adr: ne_target_register,
+                    v0: R0_IDX,
+                    v1: R2_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1044,13 +1178,37 @@ mod tests {
             let v2 = 321i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: gt_target_register, imm: gt_target as i32 },
-                Instruction::MovImm { dst: R0_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R2_IDX, imm: v2 as i32 },
-                Instruction::Jgt { adr: gt_target_register, v0: R0_IDX, v1: R1_IDX },
-                Instruction::Jgt { adr: gt_target_register, v0: R0_IDX, v1: R2_IDX },
-                Instruction::Jgt { adr: gt_target_register, v0: R2_IDX, v1: R0_IDX },
+                Instruction::MovImm {
+                    dst: gt_target_register,
+                    imm: gt_target as i32,
+                },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R2_IDX,
+                    imm: v2 as i32,
+                },
+                Instruction::Jgt {
+                    adr: gt_target_register,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
+                Instruction::Jgt {
+                    adr: gt_target_register,
+                    v0: R0_IDX,
+                    v1: R2_IDX,
+                },
+                Instruction::Jgt {
+                    adr: gt_target_register,
+                    v0: R2_IDX,
+                    v1: R0_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1075,12 +1233,32 @@ mod tests {
             let v2 = 321i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: ge_target_register, imm: ge_target as i32 },
-                Instruction::MovImm { dst: R0_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R2_IDX, imm: v2 as i32 },
-                Instruction::Jge { adr: ge_target_register, v0: R0_IDX, v1: R2_IDX },
-                Instruction::Jge { adr: ge_target_register, v0: R0_IDX, v1: R1_IDX },
+                Instruction::MovImm {
+                    dst: ge_target_register,
+                    imm: ge_target as i32,
+                },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R2_IDX,
+                    imm: v2 as i32,
+                },
+                Instruction::Jge {
+                    adr: ge_target_register,
+                    v0: R0_IDX,
+                    v1: R2_IDX,
+                },
+                Instruction::Jge {
+                    adr: ge_target_register,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1103,13 +1281,37 @@ mod tests {
             let v2 = 321i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: lt_target_register, imm: lt_target as i32 },
-                Instruction::MovImm { dst: R0_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R2_IDX, imm: v2 as i32 },
-                Instruction::Jlt { adr: lt_target_register, v0: R0_IDX, v1: R1_IDX },
-                Instruction::Jlt { adr: lt_target_register, v0: R2_IDX, v1: R0_IDX },
-                Instruction::Jlt { adr: lt_target_register, v0: R0_IDX, v1: R2_IDX },
+                Instruction::MovImm {
+                    dst: lt_target_register,
+                    imm: lt_target as i32,
+                },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R2_IDX,
+                    imm: v2 as i32,
+                },
+                Instruction::Jlt {
+                    adr: lt_target_register,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
+                Instruction::Jlt {
+                    adr: lt_target_register,
+                    v0: R2_IDX,
+                    v1: R0_IDX,
+                },
+                Instruction::Jlt {
+                    adr: lt_target_register,
+                    v0: R0_IDX,
+                    v1: R2_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1134,12 +1336,32 @@ mod tests {
             let v2 = 321i64;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: le_target_register, imm: le_target as i32 },
-                Instruction::MovImm { dst: R0_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::MovImm { dst: R2_IDX, imm: v2 as i32 },
-                Instruction::Jle { adr: le_target_register, v0: R2_IDX, v1: R0_IDX },
-                Instruction::Jle { adr: le_target_register, v0: R0_IDX, v1: R1_IDX },
+                Instruction::MovImm {
+                    dst: le_target_register,
+                    imm: le_target as i32,
+                },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R2_IDX,
+                    imm: v2 as i32,
+                },
+                Instruction::Jle {
+                    adr: le_target_register,
+                    v0: R2_IDX,
+                    v1: R0_IDX,
+                },
+                Instruction::Jle {
+                    adr: le_target_register,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1161,9 +1383,19 @@ mod tests {
             let vexpected = v0 + v1;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: v0 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::Add { dst: R2_IDX, v0: R0_IDX, v1: R1_IDX },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v0 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::Add {
+                    dst: R2_IDX,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1181,9 +1413,19 @@ mod tests {
             let vexpected = v0 + v1;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: v0 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::Add { dst: R2_IDX, v0: R0_IDX, v1: R1_IDX },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v0 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::Add {
+                    dst: R2_IDX,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1201,9 +1443,19 @@ mod tests {
             let vexpected = v0 * v1;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: v0 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::Mul { dst: R2_IDX, v0: R0_IDX, v1: R1_IDX },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v0 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::Mul {
+                    dst: R2_IDX,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1221,9 +1473,19 @@ mod tests {
             let vexpected = v0 / v1;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: v0 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::Div { dst: R2_IDX, v0: R0_IDX, v1: R1_IDX },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v0 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::Div {
+                    dst: R2_IDX,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1241,9 +1503,19 @@ mod tests {
             let vexpected = v0 % v1;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: v0 as i32 },
-                Instruction::MovImm { dst: R1_IDX, imm: v1 as i32 },
-                Instruction::Mod { dst: R2_IDX, v0: R0_IDX, v1: R1_IDX },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v0 as i32,
+                },
+                Instruction::MovImm {
+                    dst: R1_IDX,
+                    imm: v1 as i32,
+                },
+                Instruction::Mod {
+                    dst: R2_IDX,
+                    v0: R0_IDX,
+                    v1: R1_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1256,24 +1528,22 @@ mod tests {
 
         #[test]
         fn exec_halt() {
-            let program = Program::from_instructions(&[
-                Instruction::Halt { },
-            ]);
+            let program = Program::from_instructions(&[Instruction::Halt {}]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
 
             assert_eq!(program_instance.execute_step(), Ok(false));
-            assert_eq!(program_instance.execute_step(), Err(()));
+            assert_eq!(program_instance.execute_step(), Err(Error::ExecutionError));
         }
 
         #[test]
         fn exec_noop() {
             let program = Program::from_instructions(&[
-                Instruction::Noop { },
-                Instruction::Noop { },
-                Instruction::Noop { },
-                Instruction::Noop { },
-                Instruction::Halt { },
+                Instruction::Noop {},
+                Instruction::Noop {},
+                Instruction::Noop {},
+                Instruction::Noop {},
+                Instruction::Halt {},
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1286,21 +1556,20 @@ mod tests {
 
         #[test]
         fn exec_empty_program() {
-            let program = Program::from_instructions(&[
-            ]);
+            let program = Program::from_instructions(&[]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
 
-            assert_eq!(program_instance.execute_step(), Err(()));
+            assert_eq!(program_instance.execute_step(), Err(Error::ExecutionError));
         }
 
         #[test]
         fn exec_end_of_code() {
             let program = Program::from_instructions(&[
-                Instruction::Noop { },
-                Instruction::Noop { },
-                Instruction::Noop { },
-                Instruction::Noop { },
+                Instruction::Noop {},
+                Instruction::Noop {},
+                Instruction::Noop {},
+                Instruction::Noop {},
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);
@@ -1308,7 +1577,7 @@ mod tests {
             for _ in 0..4 {
                 assert_eq!(program_instance.execute_step(), Ok(true));
             }
-            assert_eq!(program_instance.execute_step(), Err(()));
+            assert_eq!(program_instance.execute_step(), Err(Error::ExecutionError));
         }
 
         #[test]
@@ -1317,8 +1586,15 @@ mod tests {
             let vexpected = v0 + v0;
 
             let program = Program::from_instructions(&[
-                Instruction::MovImm { dst: R0_IDX, imm: v0 as i32 },
-                Instruction::Add { dst: R0_IDX, v0: R0_IDX, v1: R0_IDX },
+                Instruction::MovImm {
+                    dst: R0_IDX,
+                    imm: v0 as i32,
+                },
+                Instruction::Add {
+                    dst: R0_IDX,
+                    v0: R0_IDX,
+                    v1: R0_IDX,
+                },
             ]);
             let state = ExecutionState::default();
             let mut program_instance = ProgramInstance::new(program, state);

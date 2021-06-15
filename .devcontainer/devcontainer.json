@@ -6,10 +6,13 @@
 		"dockerfile": "Dockerfile",
 		"target": "dev"
 	},
-	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
-
+	"runArgs": [
+		"--cap-add=SYS_PTRACE",
+		"--security-opt",
+		"seccomp=unconfined"
+	],
 	// Set *default* container specific settings.json values on container create.
-	"settings": { 
+	"settings": {
 		"editor.formatOnSave": true,
 		"lldb.executable": "/usr/bin/lldb",
 		// VS Code don't watch files under ./target
@@ -18,7 +21,8 @@
 		},
 		"rust.clippy_preference": "on",
 		"rust-client.updateOnStartup": true,
-		"launch":{
+		"rust.cfg_test": true,
+		"launch": {
 			"configurations": [
 				{
 					"type": "lldb",
@@ -39,7 +43,6 @@
 			"compounds": []
 		}
 	},
-
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"rust-lang.rust",
@@ -51,13 +54,10 @@
 		"davidanson.vscode-markdownlint",
 		"serayuzgur.crates"
 	],
-
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
-
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "rustc --version",
-
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"
 }

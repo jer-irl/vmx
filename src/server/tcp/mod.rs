@@ -3,6 +3,12 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 
+#[derive(Debug)]
+pub enum Error {
+    Net,
+    Thread,
+}
+
 pub struct Server {
     config: ServerConfig,
     listening_thread: Option<JoinHandle<()>>,
@@ -12,8 +18,13 @@ pub struct Server {
 }
 
 pub struct IncomingMessage {
-    client_id: ClientId,
-    bytes: Vec<u8>,
+    pub client_id: ClientId,
+    pub bytes: Vec<u8>,
+}
+
+pub struct OutgoingMessage {
+    pub client_id: ClientId,
+    pub bytes: Vec<u8>,
 }
 
 impl Server {
@@ -27,7 +38,7 @@ impl Server {
         }
     }
 
-    pub fn start_listening(&mut self) -> Result<(), ()> {
+    pub fn start_listening(&mut self) -> Result<(), Error> {
         assert!(self.listening_thread.is_none());
         let listener =
             TcpListener::bind(format!("{}{}", &self.config.ip, self.config.port)).unwrap();
@@ -43,7 +54,7 @@ impl Server {
         Ok(())
     }
 
-    pub fn stop_listening(&mut self) -> Result<(), ()> {
+    pub fn stop_listening(&mut self) -> Result<(), Error> {
         panic!("Unimplemented");
     }
 
@@ -52,6 +63,16 @@ impl Server {
         sending_channel: Sender<IncomingMessage>,
     ) {
         self.incoming_message_handlers.push(sending_channel);
+    }
+
+    pub fn send_notifications(&self, notifications: &[OutgoingMessage]) -> Result<(), Error> {
+        panic!("Unimplemented");
+    }
+
+    pub fn run(&mut self) {
+        while let Ok(task) = self.task_channels.1.recv() {
+            self.handle_task(task)
+        }
     }
 
     fn handle_task(&mut self, task: ServerTask) {
@@ -93,7 +114,7 @@ pub struct ServerConfig {
 }
 
 #[derive(Clone, Copy)]
-struct ClientId(u64);
+pub struct ClientId(u64);
 
 struct ClientRecord {
     client_id: ClientId,

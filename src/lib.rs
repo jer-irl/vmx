@@ -1,6 +1,7 @@
 #![warn(clippy::all)]
 
 pub mod auction;
+pub mod exchange;
 pub mod protocol;
 pub mod server;
 pub mod vm;
