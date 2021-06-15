@@ -10,12 +10,14 @@
 
 	// Set *default* container specific settings.json values on container create.
 	"settings": { 
+		"editor.formatOnSave": true,
 		"lldb.executable": "/usr/bin/lldb",
 		// VS Code don't watch files under ./target
 		"files.watcherExclude": {
 			"**/target/**": true
 		},
-		"rust-analyzer.updates.askBeforeDownload": false,
+		"rust.clippy_preference": "on",
+		"rust-client.updateOnStartup": true,
 		"launch":{
 			"configurations": [
 				{
@@ -40,7 +42,7 @@
 
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
-		"matklad.rust-analyzer",
+		"rust-lang.rust",
 		"bungcip.better-toml",
 		"vadimcn.vscode-lldb",
 		"mutantdino.resourcemonitor",
