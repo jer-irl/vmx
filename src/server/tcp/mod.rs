@@ -37,7 +37,9 @@ impl Server {
         match task {
             ServerTask::NewClient(mut stream) => {
                 let client_id = ClientId(0); // TODO
-                let record = ClientRecord { client_id };
+                let record = ClientRecord {
+                    _client_id: client_id,
+                };
                 let send_channel = self.task_channels.0.clone();
                 let join_handle = thread::spawn(move || {
                     let mut buf = [0u8; 2048];
@@ -95,7 +97,7 @@ impl ServerTrait for Server {
             .push(handler.sender());
     }
 
-    fn send_notifications(&self, notifications: &[OutgoingMessage]) -> Result<(), Self::Error> {
+    fn send_notifications(&self, _notifications: &[OutgoingMessage]) -> Result<(), Self::Error> {
         panic!("Unimplemented");
     }
 
@@ -121,7 +123,7 @@ impl Default for ServerConfig {
 }
 
 struct ClientRecord {
-    client_id: ClientId,
+    _client_id: ClientId,
 }
 
 enum ServerTask {

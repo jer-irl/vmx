@@ -420,4 +420,34 @@ mod tests {
             0
         );
     }
+
+    #[test]
+    fn match_order_same_size() {
+        panic!("Unimplemented");
+    }
+
+    #[test]
+    fn no_match_across_spread() {
+        panic!("Unimplemented");
+    }
+
+    #[test]
+    fn match_order_different_size() {
+        panic!("Unimplemented");
+    }
+
+    #[test]
+    fn match_orders_by_priority() {
+        panic!("Unimplemented");
+    }
+
+    #[test]
+    fn match_many_overlapping() {
+        panic!("Unimplemented");
+    }
+
+    #[test]
+    fn match_vcg() {
+        panic!("Unimplemented");
+    }
 }

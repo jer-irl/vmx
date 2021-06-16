@@ -1,4 +1,4 @@
-use super::{book::Level, Book, Order, ProductId, Side};
+use super::{Book, Order, ProductId, Side};
 use crate::{vm, ParticipantId, Price};
 
 /// Input
@@ -158,6 +158,7 @@ impl ProgramInstance {
 
 #[cfg(test)]
 mod tests {
+    use super::super::book::Level;
     use super::super::*;
     use super::*;
 

@@ -16,7 +16,7 @@ pub enum ClientDirective {
 }
 
 impl From<&[u8]> for ClientDirective {
-    fn from(bytes: &[u8]) -> Self {
+    fn from(_bytes: &[u8]) -> Self {
         panic!("Unimplemented");
     }
 }
@@ -30,13 +30,13 @@ pub enum ClientNotification {
 }
 
 impl From<&Trade> for ClientNotification {
-    fn from(t: &Trade) -> Self {
+    fn from(_t: &Trade) -> Self {
         panic!("Unimplemented");
     }
 }
 
 impl From<ClientNotification> for OutgoingMessage {
-    fn from(notification: ClientNotification) -> Self {
+    fn from(_notification: ClientNotification) -> Self {
         panic!("Unimplemented");
     }
 }

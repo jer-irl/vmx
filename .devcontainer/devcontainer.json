@@ -14,6 +14,7 @@
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
 		"editor.formatOnSave": true,
+		"resmon.show.cpufreq": false,
 		"lldb.executable": "/usr/bin/lldb",
 		// VS Code don't watch files under ./target
 		"files.watcherExclude": {

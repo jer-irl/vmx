@@ -32,7 +32,7 @@ impl Engine {
         }
     }
 
-    pub fn apply_participant_directive(&mut self, directive: &ClientDirective) {
+    pub fn apply_participant_directive(&mut self, _directive: &ClientDirective) {
         panic!("Unimplemented");
     }
 
