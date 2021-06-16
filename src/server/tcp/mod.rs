@@ -1,7 +1,12 @@
+use std::cell::RefCell;
 use std::io::Read;
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
+
+use super::{
+    ClientId, IncomingMessage, IncomingMessageHandler, OutgoingMessage, Server as ServerTrait,
+};
 
 #[derive(Debug)]
 pub enum Error {
@@ -14,17 +19,7 @@ pub struct Server {
     listening_thread: Option<JoinHandle<()>>,
     client_records: Vec<(ClientRecord, JoinHandle<()>)>,
     task_channels: (Sender<ServerTask>, Receiver<ServerTask>),
-    incoming_message_handlers: Vec<Sender<IncomingMessage>>,
-}
-
-pub struct IncomingMessage {
-    pub client_id: ClientId,
-    pub bytes: Vec<u8>,
-}
-
-pub struct OutgoingMessage {
-    pub client_id: ClientId,
-    pub bytes: Vec<u8>,
+    incoming_message_handlers: RefCell<Vec<Sender<IncomingMessage>>>,
 }
 
 impl Server {
@@ -34,44 +29,7 @@ impl Server {
             listening_thread: None,
             client_records: vec![],
             task_channels: mpsc::channel(),
-            incoming_message_handlers: vec![],
-        }
-    }
-
-    pub fn start_listening(&mut self) -> Result<(), Error> {
-        assert!(self.listening_thread.is_none());
-        let listener =
-            TcpListener::bind(format!("{}:{}", &self.config.ip, self.config.port)).expect("TODO");
-        let listener_sending_channel = self.task_channels.0.clone();
-        self.listening_thread = thread::spawn(move || {
-            while let Ok((stream, _todo)) = listener.accept() {
-                listener_sending_channel
-                    .send(ServerTask::NewClient(stream))
-                    .unwrap();
-            }
-        })
-        .into();
-        Ok(())
-    }
-
-    pub fn stop_listening(&mut self) -> Result<(), Error> {
-        panic!("Unimplemented");
-    }
-
-    pub fn request_incoming_message_notifications(
-        &mut self,
-        sending_channel: Sender<IncomingMessage>,
-    ) {
-        self.incoming_message_handlers.push(sending_channel);
-    }
-
-    pub fn send_notifications(&self, notifications: &[OutgoingMessage]) -> Result<(), Error> {
-        panic!("Unimplemented");
-    }
-
-    pub fn run(&mut self) {
-        while let Ok(task) = self.task_channels.1.recv() {
-            self.handle_task(task)
+            incoming_message_handlers: RefCell::new(vec![]),
         }
     }
 
@@ -95,7 +53,7 @@ impl Server {
                 self.client_records.push((record, join_handle));
             }
             ServerTask::IncomingMessage { client_id, bytes } => {
-                for handler in &self.incoming_message_handlers {
+                for handler in self.incoming_message_handlers.borrow().iter() {
                     handler
                         .send(IncomingMessage {
                             client_id,
@@ -104,6 +62,46 @@ impl Server {
                         .expect("TODO");
                 }
             }
+        }
+    }
+}
+
+impl ServerTrait for Server {
+    type Error = self::Error;
+
+    fn start_listening(&mut self) -> Result<(), Self::Error> {
+        assert!(self.listening_thread.is_none());
+        let listener =
+            TcpListener::bind(format!("{}:{}", &self.config.ip, self.config.port)).expect("TODO");
+        let listener_sending_channel = self.task_channels.0.clone();
+        self.listening_thread = thread::spawn(move || {
+            while let Ok((stream, _todo)) = listener.accept() {
+                listener_sending_channel
+                    .send(ServerTask::NewClient(stream))
+                    .expect("TODO");
+            }
+        })
+        .into();
+        Ok(())
+    }
+
+    fn stop_listening(&mut self) -> Result<(), Self::Error> {
+        panic!("Unimplemented");
+    }
+
+    fn request_incoming_message_notifications(&self, handler: &impl IncomingMessageHandler) {
+        self.incoming_message_handlers
+            .borrow_mut()
+            .push(handler.sender());
+    }
+
+    fn send_notifications(&self, notifications: &[OutgoingMessage]) -> Result<(), Self::Error> {
+        panic!("Unimplemented");
+    }
+
+    fn run_pending(&mut self) {
+        while let Ok(task) = self.task_channels.1.try_recv() {
+            self.handle_task(task)
         }
     }
 }
@@ -121,9 +119,6 @@ impl Default for ServerConfig {
         }
     }
 }
-
-#[derive(Clone, Copy)]
-pub struct ClientId(u64);
 
 struct ClientRecord {
     client_id: ClientId,

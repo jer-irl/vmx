@@ -1,5 +1,5 @@
-use crate::{ParticipantId, Price, vm};
-use super::{Book, Side, Order};
+use super::{book::Level, Book, Order, ProductId, Side};
+use crate::{vm, ParticipantId, Price};
 
 /// Input
 /// ```{text}
@@ -51,19 +51,35 @@ impl ProgramInstance {
             }
         }
 
-        if let Some((participant_lowest_bid, participant_highest_bid)) = book.bid_bounds_for_participant(participant) {
+        if let Some((participant_lowest_bid, participant_highest_bid)) =
+            book.bid_bounds_for_participant(participant)
+        {
             state.array_insert(5, 0, participant_lowest_bid.into());
             state.array_insert(5, 1, participant_highest_bid.into());
-            for price in (participant_lowest_bid.into()..=participant_highest_bid.into()).map(|idx| Price(idx)) {
-                state.array_insert(6, price.into(), book.bid_quantity_at_price_for_participant(price, participant) as i64);
+            for price in (participant_lowest_bid.into()..=participant_highest_bid.into())
+                .map(|idx| Price(idx))
+            {
+                state.array_insert(
+                    6,
+                    price.into(),
+                    book.bid_quantity_at_price_for_participant(price, participant) as i64,
+                );
             }
         }
 
-        if let Some((participant_lowest_offer, participant_highest_offer)) = book.offer_bounds_for_participant(participant) {
+        if let Some((participant_lowest_offer, participant_highest_offer)) =
+            book.offer_bounds_for_participant(participant)
+        {
             state.array_insert(5, 0, participant_lowest_offer.into());
             state.array_insert(5, 1, participant_highest_offer.into());
-            for price in (participant_lowest_offer.into()..=participant_highest_offer.into()).map(|idx| Price(idx)) {
-                state.array_insert(6, price.into(), book.bid_quantity_at_price_for_participant(price, participant) as i64);
+            for price in (participant_lowest_offer.into()..=participant_highest_offer.into())
+                .map(|idx| Price(idx))
+            {
+                state.array_insert(
+                    6,
+                    price.into(),
+                    book.bid_quantity_at_price_for_participant(price, participant) as i64,
+                );
             }
         }
 
@@ -74,37 +90,59 @@ impl ProgramInstance {
     }
 
     pub fn execute(&mut self) {
-        while let Ok(true) = self.vm_program_instance.execute_step() { }
+        while let Ok(true) = self.vm_program_instance.execute_step() {}
     }
 
-    pub fn write_result_into_book(&self, prev_book: &Book, result_book: &mut Book, participant_id: ParticipantId) {
-        let mut populate_previous_orders = |bounds_accessor: fn(&Book, ParticipantId) -> Option<(Price, Price)>, side, quantity_accessor: fn(&Book, Price, ParticipantId) -> i64| {
-            if let Some((low_price, high_price)) = bounds_accessor(prev_book, participant_id) {
-                for price in low_price.0..=high_price.0 {
-                    let price = Price(price);
-                    let order = Order {
-                        participant: participant_id,
-                        side,
-                        quantity: quantity_accessor(prev_book, price, participant_id),
-                        price,
-                    };
-                    result_book.insert_order(order);
+    pub fn write_result_into_book(
+        &self,
+        prev_book: &Book,
+        result_book: &mut Book,
+        participant_id: ParticipantId,
+    ) {
+        let mut populate_previous_orders =
+            |bounds_accessor: fn(&Book, ParticipantId) -> Option<(Price, Price)>,
+             side,
+             quantity_accessor: fn(&Book, Price, ParticipantId) -> i64| {
+                if let Some((low_price, high_price)) = bounds_accessor(prev_book, participant_id) {
+                    for price in low_price.0..=high_price.0 {
+                        let price = Price(price);
+                        let order = Order {
+                            participant: participant_id,
+                            product_id: ProductId(0),
+                            side,
+                            quantity: quantity_accessor(prev_book, price, participant_id),
+                            price,
+                        };
+                        result_book.insert_order(order);
+                    }
                 }
-            }
-        };
+            };
 
         if self.vm_program_instance.state().array_read(9, 0) == 0 {
-            populate_previous_orders(Book::bid_bounds_for_participant, Side::Bid, Book::bid_quantity_at_price_for_participant);
+            populate_previous_orders(
+                Book::bid_bounds_for_participant,
+                Side::Bid,
+                Book::bid_quantity_at_price_for_participant,
+            );
         }
 
         if self.vm_program_instance.state().array_read(10, 0) == 0 {
-            populate_previous_orders(Book::offer_bounds_for_participant, Side::Offer, Book::offer_quantity_at_price_for_participant);
+            populate_previous_orders(
+                Book::offer_bounds_for_participant,
+                Side::Offer,
+                Book::offer_quantity_at_price_for_participant,
+            );
         }
 
         let mut add_new_orders = |array_idx, side| {
-            for (idx, val) in self.vm_program_instance.state().iter_touched_values(array_idx) {
+            for (idx, val) in self
+                .vm_program_instance
+                .state()
+                .iter_touched_values(array_idx)
+            {
                 let order = Order {
                     participant: participant_id,
+                    product_id: ProductId(0),
                     side,
                     quantity: val,
                     price: Price(idx),
@@ -120,8 +158,8 @@ impl ProgramInstance {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::*;
+    use super::*;
 
     #[test]
     fn construct_from_empty_book() {
@@ -173,46 +211,49 @@ mod tests {
                         orders: vec![
                             Order {
                                 participant: ParticipantId(0),
+                                product_id: ProductId(0),
                                 price: Price(1),
                                 quantity: 99,
                                 side: Side::Bid,
                             },
                             Order {
                                 participant: ParticipantId(1),
+                                product_id: ProductId(0),
                                 price: Price(1),
                                 quantity: 99,
                                 side: Side::Bid,
                             },
-                        ]
+                        ],
                     },
                 ),
                 (
                     Price(2),
                     Level {
-                        orders: vec![
-                            Order {
-                                participant: ParticipantId(0),
-                                price: Price(2),
-                                quantity: 99,
-                                side: Side::Bid,
-                            },
-                        ]
+                        orders: vec![Order {
+                            participant: ParticipantId(0),
+                            product_id: ProductId(0),
+                            price: Price(2),
+                            quantity: 99,
+                            side: Side::Bid,
+                        }],
                     },
                 ),
                 (
                     Price(3),
                     Level {
-                        orders: vec![
-                            Order {
-                                participant: ParticipantId(1),
-                                price: Price(3),
-                                quantity: 99,
-                                side: Side::Offer,
-                            },
-                        ]
+                        orders: vec![Order {
+                            participant: ParticipantId(1),
+                            product_id: ProductId(0),
+                            price: Price(3),
+                            quantity: 99,
+                            side: Side::Offer,
+                        }],
                     },
                 ),
-            ].iter().cloned().collect(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
         };
         let instance = ProgramInstance::new(&program, &book, ParticipantId(0));
 
@@ -256,55 +297,70 @@ mod tests {
                         orders: vec![
                             Order {
                                 participant: ParticipantId(0),
+                                product_id: ProductId(0),
                                 price: Price(1),
                                 quantity: 99,
                                 side: Side::Bid,
                             },
                             Order {
                                 participant: ParticipantId(1),
+                                product_id: ProductId(0),
                                 price: Price(1),
                                 quantity: 99,
                                 side: Side::Bid,
                             },
-                        ]
+                        ],
                     },
                 ),
                 (
                     Price(2),
                     Level {
-                        orders: vec![
-                            Order {
-                                participant: ParticipantId(0),
-                                price: Price(2),
-                                quantity: 99,
-                                side: Side::Bid,
-                            },
-                        ]
+                        orders: vec![Order {
+                            participant: ParticipantId(0),
+                            product_id: ProductId(0),
+                            price: Price(2),
+                            quantity: 99,
+                            side: Side::Bid,
+                        }],
                     },
                 ),
                 (
                     Price(3),
                     Level {
-                        orders: vec![
-                            Order {
-                                participant: ParticipantId(0),
-                                price: Price(3),
-                                quantity: 99,
-                                side: Side::Offer,
-                            },
-                        ]
+                        orders: vec![Order {
+                            participant: ParticipantId(0),
+                            product_id: ProductId(0),
+                            price: Price(3),
+                            quantity: 99,
+                            side: Side::Offer,
+                        }],
                     },
                 ),
-            ].iter().cloned().collect(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
         };
         let mut instance = ProgramInstance::new(&program, &book, ParticipantId(0));
 
         // Modify bid at 2 by -98 to 1, keep bid at 1
-        instance.vm_program_instance.state_mut().array_insert(9, 0, 0);
-        instance.vm_program_instance.state_mut().array_insert(9, 2, -98);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(9, 0, 0);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(9, 2, -98);
         // Expect erase offer at 3
-        instance.vm_program_instance.state_mut().array_insert(10, 0, 1);
-        instance.vm_program_instance.state_mut().array_insert(10, 4, 23);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(10, 0, 1);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(10, 4, 23);
 
         let mut result_book = Book::default();
         instance.write_result_into_book(&book, &mut result_book, ParticipantId(0));
@@ -313,15 +369,33 @@ mod tests {
         assert_eq!(result_book.bid_bounds(), Some((Price(1), Price(2))));
         assert_eq!(result_book.bid_quantity_at_price(Price(1)), 99);
         assert_eq!(result_book.bid_quantity_at_price(Price(2)), 1);
-        assert_eq!(result_book.bid_bounds_for_participant(ParticipantId(0)), Some((Price(1), Price(2))));
-        assert_eq!(result_book.bid_quantity_at_price_for_participant(Price(1), ParticipantId(0)), 99);
-        assert_eq!(result_book.bid_quantity_at_price_for_participant(Price(2), ParticipantId(0)), 1);
+        assert_eq!(
+            result_book.bid_bounds_for_participant(ParticipantId(0)),
+            Some((Price(1), Price(2)))
+        );
+        assert_eq!(
+            result_book.bid_quantity_at_price_for_participant(Price(1), ParticipantId(0)),
+            99
+        );
+        assert_eq!(
+            result_book.bid_quantity_at_price_for_participant(Price(2), ParticipantId(0)),
+            1
+        );
 
         assert_eq!(result_book.offer_bounds(), Some((Price(4), Price(4))));
         assert_eq!(result_book.offer_quantity_at_price(Price(3)), 0);
         assert_eq!(result_book.offer_quantity_at_price(Price(4)), 23);
-        assert_eq!(result_book.offer_bounds_for_participant(ParticipantId(0)), Some((Price(4), Price(4))));
-        assert_eq!(result_book.offer_quantity_at_price_for_participant(Price(3), ParticipantId(0)), 0);
-        assert_eq!(result_book.offer_quantity_at_price_for_participant(Price(4), ParticipantId(0)), 23);
+        assert_eq!(
+            result_book.offer_bounds_for_participant(ParticipantId(0)),
+            Some((Price(4), Price(4)))
+        );
+        assert_eq!(
+            result_book.offer_quantity_at_price_for_participant(Price(3), ParticipantId(0)),
+            0
+        );
+        assert_eq!(
+            result_book.offer_quantity_at_price_for_participant(Price(4), ParticipantId(0)),
+            23
+        );
     }
 }

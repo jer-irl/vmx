@@ -1,39 +1,62 @@
-use std::sync::mpsc;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
 use chrono::{Duration, Local};
 use timer::Timer;
 
-pub use crate::auction::configuration::AuctionConfiguration;
+pub use crate::auction::AuctionConfiguration;
 use crate::auction::Engine;
 use crate::protocol::{ClientDirective, ClientNotification};
-use crate::server::tcp::Server;
 pub use crate::server::tcp::ServerConfig;
+use crate::server::{IncomingMessage, IncomingMessageHandler, Server};
 
-pub struct Exchange {
+pub struct Exchange<S>
+where
+    S: Server,
+{
     engine: Engine,
-    server: Server,
+    server: S,
+    incoming_messages_tx: Option<Sender<IncomingMessage>>,
 }
 
-impl Default for Exchange {
+impl<S> Default for Exchange<S>
+where
+    S: Server,
+{
     fn default() -> Self {
         panic!("Unimplemented");
     }
 }
 
-impl Exchange {
-    pub fn new(engine_config: AuctionConfiguration, server_config: ServerConfig) -> Self {
+impl<S> IncomingMessageHandler for Exchange<S>
+where
+    S: Server,
+{
+    fn sender(&self) -> Sender<IncomingMessage> {
+        self.incoming_messages_tx.as_ref().expect("TODO").clone()
+    }
+}
+
+impl<S> Exchange<S>
+where
+    S: Server + Send + 'static,
+{
+    pub fn new(engine_config: AuctionConfiguration, server: S) -> Self {
         let engine = Engine::new(engine_config);
-        let server = Server::new(server_config);
-        Self { engine, server }
+        Self {
+            engine,
+            server,
+            incoming_messages_tx: None,
+        }
     }
 
     pub fn run_forever(mut self) {
         self.server.start_listening().expect("TODO");
-        let (incoming_tx, incoming_rx) = mpsc::channel();
-        self.server
-            .request_incoming_message_notifications(incoming_tx);
-        self.server.run();
+        let (incoming_tx, incoming_rx): (Sender<IncomingMessage>, Receiver<IncomingMessage>) =
+            mpsc::channel();
+        self.incoming_messages_tx = Some(incoming_tx);
+        self.server.request_incoming_message_notifications(&self);
+        self.server.run_pending();
 
         let timer = Timer::new();
         let repeat_interval =

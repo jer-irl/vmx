@@ -1,6 +1,7 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 use vmx::exchange::{AuctionConfiguration, Exchange, ServerConfig};
+use vmx::server::tcp::Server;
 
 fn main() {
     let app = App::new("vmx")
@@ -15,8 +16,9 @@ fn main() {
     let user_config = UserConfiguration::from(app.get_matches());
     let auction_config = AuctionConfiguration::from(&user_config);
     let server_config = ServerConfig::from(&user_config);
+    let server = Server::new(server_config);
 
-    let exchange = Exchange::new(auction_config, server_config);
+    let exchange = Exchange::new(auction_config, server);
     println!("Starting");
     exchange.run_forever();
 }
