@@ -4,65 +4,69 @@ use std::thread;
 use chrono::{Duration, Local};
 use timer::Timer;
 
-use crate::auction::{configuration::AuctionConfiguration, Engine};
+pub use crate::auction::configuration::AuctionConfiguration;
+use crate::auction::Engine;
 use crate::protocol::{ClientDirective, ClientNotification};
-use crate::server::tcp::{Server, ServerConfig};
+use crate::server::tcp::Server;
+pub use crate::server::tcp::ServerConfig;
 
 pub struct Exchange {
-	engine: Engine,
-	server: Server,
+    engine: Engine,
+    server: Server,
 }
 
 impl Default for Exchange {
-	fn default() -> Self {
-		panic!("Unimplemented");
-	}
+    fn default() -> Self {
+        panic!("Unimplemented");
+    }
 }
 
 impl Exchange {
-	pub fn new(engine_config: AuctionConfiguration, server_config: ServerConfig) -> Self {
-		panic!("Unimplemented");
-	}
+    pub fn new(engine_config: AuctionConfiguration, server_config: ServerConfig) -> Self {
+        let engine = Engine::new(engine_config);
+        let server = Server::new(server_config);
+        Self { engine, server }
+    }
 
-	pub fn run_forever(mut self) {
-		self.server.start_listening().expect("TODO");
-		let (incoming_tx, incoming_rx) = mpsc::channel();
-		self.server
-			.request_incoming_message_notifications(incoming_tx);
-		self.server.run();
+    pub fn run_forever(mut self) {
+        self.server.start_listening().expect("TODO");
+        let (incoming_tx, incoming_rx) = mpsc::channel();
+        self.server
+            .request_incoming_message_notifications(incoming_tx);
+        self.server.run();
 
-		let timer = Timer::new();
-		let repeat_interval =
-			Duration::seconds(self.engine.config().auction_interval_seconds as i64);
+        let timer = Timer::new();
+        let repeat_interval =
+            Duration::seconds(self.engine.config().auction_interval_seconds as i64);
 
-		let _guard = timer.schedule(
-			Local::now() + repeat_interval,
-			Some(repeat_interval),
-			move || {
-				while let Ok(incoming_message) = incoming_rx.try_recv() {
-					let directive = ClientDirective::from(&incoming_message.bytes[..]);
-					self.engine.apply_participant_directive(&directive);
-				}
+        let _guard = timer.schedule(
+            Local::now() + repeat_interval,
+            Some(repeat_interval),
+            move || {
+                while let Ok(incoming_message) = incoming_rx.try_recv() {
+                    let directive = ClientDirective::from(&incoming_message.bytes[..]);
+                    self.engine.apply_participant_directive(&directive);
+                }
 
-				for _ in 0..self.engine.config().num_bidding_rounds {
-					self.engine.step_all_books()
-				}
+                for _ in 0..self.engine.config().num_bidding_rounds {
+                    self.engine.step_all_books()
+                }
 
-				let trades = self.engine.match_all_books();
-				self.server
-					.send_notifications(
-						&trades
-							.iter()
-							.map(ClientNotification::from)
-							.map(ClientNotification::into)
-							.collect::<Vec<_>>()[..],
-					)
-					.expect("TODO");
-			},
-		);
+                let trades = self.engine.match_all_books();
+                self.server
+                    .send_notifications(
+                        &trades
+                            .iter()
+                            .map(ClientNotification::from)
+                            .map(ClientNotification::into)
+                            .collect::<Vec<_>>()[..],
+                    )
+                    .expect("TODO");
+            },
+        );
 
-		loop {
-			thread::park();
-		}
-	}
+        loop {
+            thread::park();
+        }
+    }
 }

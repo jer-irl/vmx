@@ -19,9 +19,10 @@
 		"files.watcherExclude": {
 			"**/target/**": true
 		},
-		"rust.clippy_preference": "on",
-		"rust-client.updateOnStartup": true,
-		"rust.cfg_test": true,
+		"rust-analyzer.updates.askBeforeDownload": false,
+		"rust-analyzer.hoverActions.references": true,
+		"rust-analyzer.lens.methodReferences": true,
+		"rust-analyzer.lens.references": true,
 		"launch": {
 			"configurations": [
 				{
@@ -38,21 +39,37 @@
 							"kind": "lib",
 						},
 					}
-				}
+				},
+				{
+					"type": "lldb",
+					"request": "launch",
+					"name": "cargo run",
+					"cargo": {
+						"args": [
+							"build",
+							"--bin=vmx",
+						],
+						"filter": {
+							"name": "vmx",
+							"kind": "bin",
+						},
+					},
+				},
 			],
 			"compounds": []
 		}
 	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
-		"rust-lang.rust",
+		"matklad.rust-analyzer",
 		"bungcip.better-toml",
 		"vadimcn.vscode-lldb",
 		"mutantdino.resourcemonitor",
 		"ms-azuretools.vscode-docker",
 		"hediet.vscode-drawio",
 		"davidanson.vscode-markdownlint",
-		"serayuzgur.crates"
+		"serayuzgur.crates",
+		"eamodio.gitlens"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

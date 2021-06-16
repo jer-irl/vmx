@@ -41,7 +41,7 @@ impl Server {
     pub fn start_listening(&mut self) -> Result<(), Error> {
         assert!(self.listening_thread.is_none());
         let listener =
-            TcpListener::bind(format!("{}{}", &self.config.ip, self.config.port)).unwrap();
+            TcpListener::bind(format!("{}:{}", &self.config.ip, self.config.port)).expect("TODO");
         let listener_sending_channel = self.task_channels.0.clone();
         self.listening_thread = thread::spawn(move || {
             while let Ok((stream, _todo)) = listener.accept() {
@@ -109,8 +109,17 @@ impl Server {
 }
 
 pub struct ServerConfig {
-    ip: String,
-    port: u16,
+    pub ip: String,
+    pub port: u16,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            ip: "127.0.0.1".to_owned(),
+            port: 8080,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
