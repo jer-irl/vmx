@@ -1,4 +1,4 @@
-#![warn(clippy::all)]
+#![allow(clippy::all)]
 
 pub mod auction;
 pub mod exchange;

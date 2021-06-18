@@ -56,7 +56,7 @@ where
             mpsc::channel();
         self.incoming_messages_tx = Some(incoming_tx);
         self.server.request_incoming_message_notifications(&self);
-        self.server.run_pending();
+        self.server.handle_pending_requests();
 
         let timer = Timer::new();
         let repeat_interval =

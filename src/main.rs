@@ -1,3 +1,5 @@
+#![allow(clippy::all)]
+
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 use vmx::exchange::{AuctionConfiguration, Exchange, ServerConfig};

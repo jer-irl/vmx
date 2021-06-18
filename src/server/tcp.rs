@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
@@ -38,7 +38,8 @@ impl Server {
             ServerTask::NewClient(mut stream) => {
                 let client_id = ClientId(0); // TODO
                 let record = ClientRecord {
-                    _client_id: client_id,
+                    client_id: client_id,
+                    stream: stream.try_clone().expect("TODO"),
                 };
                 let send_channel = self.task_channels.0.clone();
                 let join_handle = thread::spawn(move || {
@@ -97,11 +98,25 @@ impl ServerTrait for Server {
             .push(handler.sender());
     }
 
-    fn send_notifications(&self, _notifications: &[OutgoingMessage]) -> Result<(), Self::Error> {
-        panic!("Unimplemented");
+    fn send_notifications(&mut self, notifications: &[OutgoingMessage]) -> Result<(), Self::Error> {
+        for notification in notifications {
+            let stream = self
+                .client_records
+                .iter_mut()
+                .find_map(|(client_record, _join_handle)| {
+                    if client_record.client_id == notification.client_id {
+                        Some(&mut client_record.stream)
+                    } else {
+                        None
+                    }
+                })
+                .expect("TODO");
+            stream.write_all(&notification.bytes[..]).expect("TODO");
+        }
+        Ok(())
     }
 
-    fn run_pending(&mut self) {
+    fn handle_pending_requests(&mut self) {
         while let Ok(task) = self.task_channels.1.try_recv() {
             self.handle_task(task)
         }
@@ -123,7 +138,8 @@ impl Default for ServerConfig {
 }
 
 struct ClientRecord {
-    _client_id: ClientId,
+    client_id: ClientId,
+    stream: TcpStream,
 }
 
 enum ServerTask {
