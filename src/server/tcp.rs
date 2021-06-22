@@ -1,12 +1,9 @@
-use std::cell::RefCell;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 
-use super::{
-    ClientId, IncomingMessage, IncomingMessageHandler, OutgoingMessage, Server as ServerTrait,
-};
+use super::{ClientId, IncomingMessage, OutgoingMessage, Server as ServerTrait};
 
 #[derive(Debug)]
 pub enum Error {
@@ -19,7 +16,6 @@ pub struct Server {
     listening_thread: Option<JoinHandle<()>>,
     client_records: Vec<(ClientRecord, JoinHandle<()>)>,
     task_channels: (Sender<ServerTask>, Receiver<ServerTask>),
-    incoming_message_handlers: RefCell<Vec<Sender<IncomingMessage>>>,
 }
 
 impl Server {
@@ -29,11 +25,10 @@ impl Server {
             listening_thread: None,
             client_records: vec![],
             task_channels: mpsc::channel(),
-            incoming_message_handlers: RefCell::new(vec![]),
         }
     }
 
-    fn handle_task(&mut self, task: ServerTask) {
+    fn handle_task(&mut self, task: ServerTask) -> Option<IncomingMessage> {
         match task {
             ServerTask::NewClient(mut stream) => {
                 let client_id = ClientId(0); // TODO
@@ -46,25 +41,17 @@ impl Server {
                     let mut buf = [0u8; 2048];
                     while let Ok(len) = stream.read(&mut buf) {
                         send_channel
-                            .send(ServerTask::IncomingMessage {
+                            .send(ServerTask::IncomingMessage(IncomingMessage {
                                 client_id,
                                 bytes: Vec::from(&buf[0..len]),
-                            })
+                            }))
                             .expect("TODO");
                     }
                 });
                 self.client_records.push((record, join_handle));
+                None
             }
-            ServerTask::IncomingMessage { client_id, bytes } => {
-                for handler in self.incoming_message_handlers.borrow().iter() {
-                    handler
-                        .send(IncomingMessage {
-                            client_id,
-                            bytes: bytes.clone(),
-                        })
-                        .expect("TODO");
-                }
-            }
+            ServerTask::IncomingMessage(message) => Some(message),
         }
     }
 }
@@ -92,10 +79,14 @@ impl ServerTrait for Server {
         panic!("Unimplemented");
     }
 
-    fn request_incoming_message_notifications(&self, handler: &impl IncomingMessageHandler) {
-        self.incoming_message_handlers
-            .borrow_mut()
-            .push(handler.sender());
+    fn drain_pending_messages(&mut self) -> Vec<IncomingMessage> {
+        let mut result: Vec<IncomingMessage> = Vec::default();
+        while let Ok(task) = self.task_channels.1.try_recv() {
+            if let Some(message) = self.handle_task(task) {
+                result.push(message);
+            }
+        }
+        result
     }
 
     fn send_notifications(&mut self, notifications: &[OutgoingMessage]) -> Result<(), Self::Error> {
@@ -114,12 +105,6 @@ impl ServerTrait for Server {
             stream.write_all(&notification.bytes[..]).expect("TODO");
         }
         Ok(())
-    }
-
-    fn handle_pending_requests(&mut self) {
-        while let Ok(task) = self.task_channels.1.try_recv() {
-            self.handle_task(task)
-        }
     }
 }
 
@@ -144,5 +129,5 @@ struct ClientRecord {
 
 enum ServerTask {
     NewClient(TcpStream),
-    IncomingMessage { client_id: ClientId, bytes: Vec<u8> },
+    IncomingMessage(IncomingMessage),
 }

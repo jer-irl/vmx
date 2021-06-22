@@ -22,7 +22,7 @@ fn main() {
 
     let exchange = Exchange::new(auction_config, server);
     println!("Starting");
-    exchange.run_forever();
+    panic!("Unimplemented");
 }
 
 struct UserConfiguration {

@@ -1,9 +1,6 @@
 #![cfg(test)]
 
-use std::cell::RefCell;
-use std::sync::mpsc::Sender;
-
-use super::{ClientId, IncomingMessage, IncomingMessageHandler, OutgoingMessage, Server};
+use super::{ClientId, IncomingMessage, OutgoingMessage, Server};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Error;
@@ -17,7 +14,6 @@ pub struct MockServer {
     listening: bool,
     start_listening_result: Result<(), Error>,
     stop_listening_result: Result<(), Error>,
-    handler_streams: RefCell<Vec<Sender<IncomingMessage>>>,
     sent_notifications: Vec<OutgoingMessage>,
     send_notifications_result: Result<(), Error>,
     pending_tasks: Vec<ServerTask>,
@@ -58,7 +54,6 @@ impl Default for MockServer {
             listening: false,
             start_listening_result: Ok(()),
             stop_listening_result: Ok(()),
-            handler_streams: RefCell::default(),
             sent_notifications: Vec::default(),
             send_notifications_result: Ok(()),
             pending_tasks: Vec::default(),
@@ -77,25 +72,21 @@ impl Server for MockServer {
         self.stop_listening_result
     }
 
-    fn request_incoming_message_notifications(&self, handler: &impl IncomingMessageHandler) {
-        self.handler_streams.borrow_mut().push(handler.sender());
-    }
-
     fn send_notifications(&mut self, notifications: &[OutgoingMessage]) -> Result<(), Self::Error> {
         self.sent_notifications.extend_from_slice(notifications);
         self.send_notifications_result
     }
 
-    fn handle_pending_requests(&mut self) {
+    fn drain_pending_messages(&mut self) -> Vec<IncomingMessage> {
+        let mut result: Vec<IncomingMessage> = Vec::default();
         for task in self.pending_tasks.drain(..) {
             match task {
                 ServerTask::NewClient(_client_id) => {}
                 ServerTask::IncomingMessage(msg) => {
-                    for sender in self.handler_streams.borrow().iter() {
-                        sender.send(msg.clone()).expect("TODO");
-                    }
+                    result.push(msg);
                 }
             }
         }
+        result
     }
 }
