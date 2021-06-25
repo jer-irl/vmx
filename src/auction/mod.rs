@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::protocol::ClientDirective;
 use crate::vm::Program;
-use crate::{ParticipantId, ProductId};
+use crate::{ParticipantId, Price, ProductId};
 pub use bidding_program::ProgramInstance;
 pub use book::{Book, Order};
 pub use configuration::AuctionConfiguration;
@@ -15,7 +15,13 @@ struct ParticipantRecord {
     interested_products: HashMap<ProductId, Program>,
 }
 
-pub struct Trade {}
+pub struct Trade {
+    pub product_id: ProductId,
+    pub buyer: ParticipantId,
+    pub seller: ParticipantId,
+    pub price: Price,
+    pub quantity: u64,
+}
 
 pub struct Engine {
     configuration: AuctionConfiguration,
@@ -98,8 +104,14 @@ impl Engine {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Side {
     Bid,
     Offer,
+}
+
+impl std::fmt::Display for Side {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }

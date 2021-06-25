@@ -14,7 +14,7 @@ pub trait Server {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct ClientId(u64);
+pub struct ClientId(pub u64);
 
 #[derive(Clone)]
 pub struct IncomingMessage {

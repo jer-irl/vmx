@@ -177,6 +177,10 @@ impl Program {
         Ok(Self { instructions })
     }
 
+    pub fn get_string(&self) -> String {
+        todo!();
+    }
+
     pub fn from_instructions(instructions: &[Instruction]) -> Self {
         Self {
             instructions: instructions.to_vec(),

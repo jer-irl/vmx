@@ -2,7 +2,7 @@
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 
-use vmx::exchange::{AuctionConfiguration, Exchange, ServerConfig};
+use vmx::exchange::{AuctionConfiguration, JsonExchange, ServerConfig};
 use vmx::server::tcp::Server;
 
 fn main() {
@@ -20,9 +20,9 @@ fn main() {
     let server_config = ServerConfig::from(&user_config);
     let server = Server::new(server_config);
 
-    let exchange = Exchange::new(auction_config, server);
+    let _exchange = JsonExchange::new(auction_config, server);
     println!("Starting");
-    panic!("Unimplemented");
+    todo!();
 }
 
 struct UserConfiguration {
