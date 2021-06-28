@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::auction::{ParticipantId, Side, Trade};
+use crate::auction::{Side, Trade};
+use crate::participant::ParticipantId;
 use crate::{Price, ProductId};
 
 #[derive(Default)]

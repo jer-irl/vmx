@@ -2,7 +2,7 @@ pub mod mocks;
 pub mod tcp;
 
 pub trait Server {
-    type Error: std::fmt::Debug;
+    type Error: std::error::Error;
 
     fn start_listening(&mut self) -> Result<(), Self::Error>;
 

@@ -63,6 +63,8 @@ impl WireProtocol for JsonProtocol {
 
 #[derive(Serialize, Deserialize)]
 enum JsonClientDirective {
+    Join {},
+    Leave {},
     UpdateParameter {
         product_id: u64,
         param_idx: u64,
@@ -77,6 +79,8 @@ enum JsonClientDirective {
 impl From<&ClientDirective> for JsonClientDirective {
     fn from(directive: &ClientDirective) -> Self {
         match directive {
+            ClientDirective::Join {} => JsonClientDirective::Join {},
+            ClientDirective::Leave {} => JsonClientDirective::Leave {},
             ClientDirective::SubmitProgram {
                 product_id,
                 program,

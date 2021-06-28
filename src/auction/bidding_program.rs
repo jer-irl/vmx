@@ -1,5 +1,6 @@
 use super::{Book, Order, ProductId, Side};
-use crate::{vm, ParticipantId, Price};
+use crate::participant::ParticipantId;
+use crate::{vm, Price};
 
 /// Input
 /// ```{text}

@@ -17,6 +17,8 @@ pub trait WireProtocol {
 }
 
 pub enum ClientDirective {
+    Join {},
+    Leave {},
     UpdateParameter {
         product_id: ProductId,
         param_idx: u64,

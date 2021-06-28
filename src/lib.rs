@@ -2,6 +2,7 @@
 
 pub mod auction;
 pub mod exchange;
+pub mod participant;
 pub mod protocol;
 pub mod server;
 pub mod vm;
@@ -22,9 +23,6 @@ impl From<Price> for u64 {
         p.0
     }
 }
-
-#[derive(Hash, PartialEq, Eq, Clone, Copy)]
-pub struct ParticipantId(u64);
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]
 pub struct ProductId(u64);

@@ -1,89 +1,66 @@
 pub use crate::auction::AuctionConfiguration;
 use crate::auction::{Engine, Side};
-use crate::protocol::json::JsonProtocol;
-use crate::protocol::{ClientNotification, WireProtocol};
-pub use crate::server::tcp::ServerConfig;
-use crate::server::{ClientId, OutgoingMessage, Server};
+use crate::participant::ParticipantId;
+use crate::participant::ParticipantPool;
+use crate::protocol::ClientNotification;
 
-pub trait Exchange {
-    type WireProtocol: WireProtocol;
-}
-
-pub struct JsonExchange<S>
+pub struct Exchange<P>
 where
-    S: Server,
+    P: ParticipantPool,
 {
     engine: Engine,
-    server: S,
+    participant_pool: P,
 }
 
-impl<S> Default for JsonExchange<S>
+impl<P> Default for Exchange<P>
 where
-    S: Server,
+    P: ParticipantPool,
 {
     fn default() -> Self {
-        panic!("Unimplemented");
+        todo!();
     }
 }
 
-impl<S> Exchange for JsonExchange<S>
+impl<P> Exchange<P>
 where
-    S: Server,
+    P: ParticipantPool,
 {
-    type WireProtocol = JsonProtocol;
-}
-
-impl<S> JsonExchange<S>
-where
-    S: Server,
-{
-    pub fn new(engine_config: AuctionConfiguration, server: S) -> Self {
+    pub fn new(engine_config: AuctionConfiguration, participant_pool: P) -> Self {
         let engine = Engine::new(engine_config);
-        Self { engine, server }
+        Self {
+            engine,
+            participant_pool,
+        }
     }
 
     pub fn step(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let pending_client_messages = self.server.drain_pending_messages();
-        for message in pending_client_messages {
-            let directive = <Self as Exchange>::WireProtocol::try_client_directive_from_bytes(
-                &message.bytes[..],
-            )?;
-            self.engine.apply_participant_directive(&directive);
+        let pending_client_messages = self.participant_pool.pop_all_directives();
+        for (participant_id, directive) in pending_client_messages {
+            self.engine
+                .apply_participant_directive(participant_id, &directive);
         }
 
         self.engine.step_all_books();
         let trades = self.engine.match_all_books();
 
-        let mut notifications: Vec<ClientNotification> = Vec::default();
+        let mut notifications: Vec<(ParticipantId, ClientNotification)> = Vec::default();
         for trade in trades {
             let seller_notification = ClientNotification::Trade {
                 product_id: trade.product_id,
                 quantity: trade.quantity,
                 side: Side::Offer,
             };
-            notifications.push(seller_notification);
+            notifications.push((trade.seller, seller_notification));
             let buyer_notification = ClientNotification::Trade {
                 product_id: trade.product_id,
                 quantity: trade.quantity,
                 side: Side::Bid,
             };
-            notifications.push(buyer_notification);
+            notifications.push((trade.buyer, buyer_notification));
         }
 
-        self.server
-            .send_notifications(
-                &notifications
-                    .into_iter()
-                    .filter_map(|n| {
-                        <Self as Exchange>::WireProtocol::try_client_notification_to_bytes(&n).ok()
-                    })
-                    .map(|bytes| OutgoingMessage {
-                        client_id: ClientId(0), // TODO
-                        bytes,
-                    })
-                    .collect::<Vec<_>>()[..],
-            )
-            .expect("TODO");
+        self.participant_pool
+            .push_notifications_to_all(&notifications[..]);
 
         Ok(())
     }

@@ -4,9 +4,10 @@ mod configuration;
 
 use std::collections::HashMap;
 
+use crate::participant::ParticipantId;
 use crate::protocol::ClientDirective;
 use crate::vm::Program;
-use crate::{ParticipantId, Price, ProductId};
+use crate::{Price, ProductId};
 pub use bidding_program::ProgramInstance;
 pub use book::{Book, Order};
 pub use configuration::AuctionConfiguration;
@@ -38,8 +39,12 @@ impl Engine {
         }
     }
 
-    pub fn apply_participant_directive(&mut self, _directive: &ClientDirective) {
-        panic!("Unimplemented");
+    pub fn apply_participant_directive(
+        &mut self,
+        _participant_id: ParticipantId,
+        _directive: &ClientDirective,
+    ) {
+        todo!();
     }
 
     pub fn config(&self) -> &AuctionConfiguration {

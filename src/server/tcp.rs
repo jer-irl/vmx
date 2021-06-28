@@ -4,12 +4,19 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 
 use super::{ClientId, IncomingMessage, OutgoingMessage, Server as ServerTrait};
+use crate::participant::ParticipantPool;
 
 #[derive(Debug)]
 pub enum Error {
     Net,
     Thread,
 }
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+impl std::error::Error for Error {}
 
 pub struct Server {
     config: ServerConfig,
@@ -105,6 +112,27 @@ impl ServerTrait for Server {
             stream.write_all(&notification.bytes[..]).expect("TODO");
         }
         Ok(())
+    }
+}
+
+impl ParticipantPool for Server {
+    fn pop_all_directives(
+        &self,
+    ) -> Vec<(
+        crate::participant::ParticipantId,
+        crate::protocol::ClientDirective,
+    )> {
+        todo!();
+    }
+
+    fn push_notifications_to_all(
+        &self,
+        _notifications: &[(
+            crate::participant::ParticipantId,
+            crate::protocol::ClientNotification,
+        )],
+    ) {
+        todo!();
     }
 }
 

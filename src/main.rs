@@ -2,8 +2,9 @@
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 
-use vmx::exchange::{AuctionConfiguration, JsonExchange, ServerConfig};
-use vmx::server::tcp::Server;
+use vmx::exchange::{AuctionConfiguration, Exchange};
+use vmx::server::tcp::{Server, ServerConfig};
+use vmx::server::Server as ServerTrait;
 
 fn main() {
     let app = App::new("vmx")
@@ -18,9 +19,10 @@ fn main() {
     let user_config = UserConfiguration::from(app.get_matches());
     let auction_config = AuctionConfiguration::from(&user_config);
     let server_config = ServerConfig::from(&user_config);
-    let server = Server::new(server_config);
+    let mut server = Server::new(server_config);
+    server.start_listening().expect("TODO");
 
-    let _exchange = JsonExchange::new(auction_config, server);
+    let _exchange = Exchange::new(auction_config, server);
     println!("Starting");
     todo!();
 }

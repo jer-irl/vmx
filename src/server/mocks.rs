@@ -1,9 +1,16 @@
 #![cfg(test)]
 
 use super::{ClientId, IncomingMessage, OutgoingMessage, Server};
+use crate::participant::ParticipantPool;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Error;
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Mock error")
+    }
+}
+impl std::error::Error for Error {}
 
 pub enum ServerTask {
     NewClient(ClientId),
@@ -17,6 +24,27 @@ pub struct MockServer {
     sent_notifications: Vec<OutgoingMessage>,
     send_notifications_result: Result<(), Error>,
     pending_tasks: Vec<ServerTask>,
+}
+
+impl ParticipantPool for MockServer {
+    fn push_notifications_to_all(
+        &self,
+        notifications: &[(
+            crate::participant::ParticipantId,
+            crate::protocol::ClientNotification,
+        )],
+    ) {
+        todo!();
+    }
+
+    fn pop_all_directives(
+        &self,
+    ) -> Vec<(
+        crate::participant::ParticipantId,
+        crate::protocol::ClientDirective,
+    )> {
+        todo!();
+    }
 }
 
 impl MockServer {
