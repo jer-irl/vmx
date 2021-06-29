@@ -117,7 +117,7 @@ impl ServerTrait for Server {
 
 impl ParticipantPool for Server {
     fn pop_all_directives(
-        &self,
+        &mut self,
     ) -> Vec<(
         crate::participant::ParticipantId,
         crate::protocol::ClientDirective,
@@ -126,7 +126,7 @@ impl ParticipantPool for Server {
     }
 
     fn push_notifications_to_all(
-        &self,
+        &mut self,
         _notifications: &[(
             crate::participant::ParticipantId,
             crate::protocol::ClientNotification,

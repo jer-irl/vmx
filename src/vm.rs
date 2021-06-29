@@ -254,7 +254,7 @@ impl ExecutionState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct RegIdx(u8);
+pub struct RegIdx(pub u8);
 
 impl From<u8> for RegIdx {
     fn from(n: u8) -> Self {

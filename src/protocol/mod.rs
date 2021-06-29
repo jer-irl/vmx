@@ -16,6 +16,7 @@ pub trait WireProtocol {
     ) -> Result<Vec<u8>, Self::Error>;
 }
 
+#[derive(Clone)]
 pub enum ClientDirective {
     Join {},
     Leave {},
@@ -30,6 +31,7 @@ pub enum ClientDirective {
     },
 }
 
+#[derive(Clone)]
 pub enum ClientNotification {
     Trade {
         product_id: ProductId,

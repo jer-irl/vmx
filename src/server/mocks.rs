@@ -28,7 +28,7 @@ pub struct MockServer {
 
 impl ParticipantPool for MockServer {
     fn push_notifications_to_all(
-        &self,
+        &mut self,
         notifications: &[(
             crate::participant::ParticipantId,
             crate::protocol::ClientNotification,
@@ -38,7 +38,7 @@ impl ParticipantPool for MockServer {
     }
 
     fn pop_all_directives(
-        &self,
+        &mut self,
     ) -> Vec<(
         crate::participant::ParticipantId,
         crate::protocol::ClientDirective,

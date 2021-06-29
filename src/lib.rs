@@ -10,7 +10,7 @@ pub mod vm;
 use num_derive::NumOps;
 
 #[derive(Debug, NumOps, Clone, Copy, PartialOrd, PartialEq, Hash, Eq, Ord)]
-pub struct Price(u64);
+pub struct Price(pub u64);
 
 impl From<Price> for i64 {
     fn from(p: Price) -> Self {
