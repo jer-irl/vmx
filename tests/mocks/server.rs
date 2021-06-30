@@ -1,7 +1,6 @@
-#![cfg(test)]
-
-use super::{ClientId, IncomingMessage, OutgoingMessage, Server};
-use crate::participant::ParticipantPool;
+use vmx::participant::{ParticipantId, ParticipantPool};
+use vmx::protocol::{ClientDirective, ClientNotification};
+use vmx::server::{ClientId, IncomingMessage, OutgoingMessage, Server};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Error;
@@ -27,22 +26,11 @@ pub struct MockServer {
 }
 
 impl ParticipantPool for MockServer {
-    fn push_notifications_to_all(
-        &mut self,
-        notifications: &[(
-            crate::participant::ParticipantId,
-            crate::protocol::ClientNotification,
-        )],
-    ) {
+    fn push_notifications_to_all(&mut self, notifications: &[(ParticipantId, ClientNotification)]) {
         todo!();
     }
 
-    fn pop_all_directives(
-        &mut self,
-    ) -> Vec<(
-        crate::participant::ParticipantId,
-        crate::protocol::ClientDirective,
-    )> {
+    fn pop_all_directives(&mut self) -> Vec<(ParticipantId, ClientDirective)> {
         todo!();
     }
 }

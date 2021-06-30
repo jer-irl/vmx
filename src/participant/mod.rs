@@ -1,5 +1,3 @@
-pub mod mocks;
-
 use crate::protocol::{ClientDirective, ClientNotification};
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]

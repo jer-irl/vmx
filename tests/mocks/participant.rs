@@ -1,12 +1,10 @@
-#![cfg(test)]
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::{Participant, ParticipantId, ParticipantPool};
-use crate::protocol::{ClientDirective, ClientNotification};
-use crate::vm::Program;
-use crate::ProductId;
+use vmx::participant::{Participant, ParticipantId, ParticipantPool};
+use vmx::protocol::{ClientDirective, ClientNotification};
+use vmx::vm::Program;
+use vmx::ProductId;
 
 #[derive(Default)]
 pub struct MockParticipantPool {
