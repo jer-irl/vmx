@@ -11,7 +11,7 @@ pub struct Book {
 
 impl Book {
     pub fn do_matching(&mut self) -> Vec<Trade> {
-        panic!("Unimplemented");
+        todo!();
     }
 
     pub fn update_or_insert_order(&mut self, order: Order) {
@@ -424,31 +424,31 @@ mod tests {
 
     #[test]
     fn match_order_same_size() {
-        panic!("Unimplemented");
+        todo!();
     }
 
     #[test]
     fn no_match_across_spread() {
-        panic!("Unimplemented");
+        todo!();
     }
 
     #[test]
     fn match_order_different_size() {
-        panic!("Unimplemented");
+        todo!();
     }
 
     #[test]
     fn match_orders_by_priority() {
-        panic!("Unimplemented");
+        todo!();
     }
 
     #[test]
     fn match_many_overlapping() {
-        panic!("Unimplemented");
+        todo!();
     }
 
     #[test]
     fn match_vcg() {
-        panic!("Unimplemented");
+        todo!();
     }
 }

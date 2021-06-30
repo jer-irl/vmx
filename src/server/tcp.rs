@@ -83,7 +83,7 @@ impl ServerTrait for Server {
     }
 
     fn stop_listening(&mut self) -> Result<(), Self::Error> {
-        panic!("Unimplemented");
+        todo!();
     }
 
     fn drain_pending_messages(&mut self) -> Vec<IncomingMessage> {

@@ -25,6 +25,10 @@ impl<P> Exchange<P>
 where
     P: ParticipantPool,
 {
+    pub fn participant_pool(&self) -> &P {
+        &self.participant_pool
+    }
+
     pub fn new(engine_config: AuctionConfiguration, participant_pool: P) -> Self {
         let engine = Engine::new(engine_config);
         Self {
