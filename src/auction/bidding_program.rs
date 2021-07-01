@@ -1,9 +1,11 @@
-use super::{Book, Order, ProductId, Side};
+use super::{Book, Order, ParticipantParameters, ProductId, Side};
 use crate::participant::ParticipantId;
 use crate::{vm, Price};
 
 /// Input
 /// ```{text}
+/// arr0[param_idx]: parameter value
+///
 /// arr1[0]: min bid price or 0 if none
 /// arr1[1]: max bid price or 0 if none
 /// arr2[price]: #bids at price
@@ -33,7 +35,12 @@ pub struct ProgramInstance {
 }
 
 impl ProgramInstance {
-    pub fn new(program: &vm::Program, book: &Book, participant: ParticipantId) -> Self {
+    pub fn new(
+        program: &vm::Program,
+        book: &Book,
+        participant: ParticipantId,
+        parameters: &ParticipantParameters,
+    ) -> Self {
         let mut state = vm::ExecutionState::default();
 
         if let Some((lowest_bid, highest_bid)) = book.bid_bounds() {
@@ -82,6 +89,10 @@ impl ProgramInstance {
                     book.bid_quantity_at_price_for_participant(price, participant) as i64,
                 );
             }
+        }
+
+        for (param_idx, param_value) in &parameters.values {
+            state.array_insert(0, *param_idx, *param_value);
         }
 
         let vm_program_instance = vm::ProgramInstance::new(program.clone(), state);
@@ -167,7 +178,16 @@ mod tests {
     fn construct_from_empty_book() {
         let program = vm::Program::from_instructions(&[]);
         let book = Book::new(ProductId(0));
-        let instance = ProgramInstance::new(&program, &book, ParticipantId(0));
+        let instance = ProgramInstance::new(
+            &program,
+            &book,
+            ParticipantId(0),
+            &ParticipantParameters::default(),
+        );
+
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 0), 0);
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 1), 0);
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 123), 0);
 
         assert_eq!(instance.vm_program_instance.state().array_read(1, 0), 0);
         assert_eq!(instance.vm_program_instance.state().array_read(1, 1), 0);
@@ -258,7 +278,16 @@ mod tests {
             .cloned()
             .collect(),
         };
-        let instance = ProgramInstance::new(&program, &book, ParticipantId(0));
+        let instance = ProgramInstance::new(
+            &program,
+            &book,
+            ParticipantId(0),
+            &ParticipantParameters::default(),
+        );
+
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 0), 0);
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 1), 0);
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 123), 0);
 
         assert_eq!(instance.vm_program_instance.state().array_read(1, 0), 1);
         assert_eq!(instance.vm_program_instance.state().array_read(1, 1), 2);
@@ -287,6 +316,24 @@ mod tests {
         assert_eq!(instance.vm_program_instance.state().array_read(8, 1), 0);
         assert_eq!(instance.vm_program_instance.state().array_read(8, 2), 0);
         assert_eq!(instance.vm_program_instance.state().array_read(8, 3), 0);
+    }
+
+    #[test]
+    fn construct_with_parameters() {
+        let program = vm::Program::from_instructions(&[]);
+        let book = Book::new(ProductId(0));
+        let parameters = ParticipantParameters {
+            values: [(1, 123), (23, 456), (0, -12345)].iter().cloned().collect(),
+        };
+        let instance = ProgramInstance::new(&program, &book, ParticipantId(0), &parameters);
+
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 1), 123);
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 23), 456);
+        assert_eq!(
+            instance.vm_program_instance.state().array_read(0, 0),
+            -12345
+        );
+        assert_eq!(instance.vm_program_instance.state().array_read(0, 12345), 0);
     }
 
     #[test]
@@ -345,7 +392,12 @@ mod tests {
             .cloned()
             .collect(),
         };
-        let mut instance = ProgramInstance::new(&program, &book, ParticipantId(0));
+        let mut instance = ProgramInstance::new(
+            &program,
+            &book,
+            ParticipantId(0),
+            &ParticipantParameters::default(),
+        );
 
         // Modify bid at 2 by -98 to 1, keep bid at 1
         instance

@@ -45,6 +45,8 @@ arr0[N]: paramN
 TODO
 
 ```{}
+arr0[param_idx]: parameter value
+
 arr1[0]: min bid price or 0 if none
 arr1[1]: max bid price or 0 if none
 arr2[price]: #bids at price

@@ -12,8 +12,15 @@ pub use bidding_program::ProgramInstance;
 pub use book::{Book, Order};
 pub use configuration::AuctionConfiguration;
 
+#[derive(Default)]
+pub struct ParticipantParameters {
+    values: HashMap<u64, i64>,
+}
+
+#[derive(Default)]
 struct ParticipantRecord {
-    interested_products: HashMap<ProductId, Program>,
+    interested_product_programs: HashMap<ProductId, Program>,
+    interested_product_parameters: HashMap<ProductId, ParticipantParameters>,
 }
 
 pub struct Trade {
@@ -41,10 +48,44 @@ impl Engine {
 
     pub fn apply_participant_directive(
         &mut self,
-        _participant_id: ParticipantId,
-        _directive: &ClientDirective,
+        participant_id: ParticipantId,
+        directive: &ClientDirective,
     ) {
-        todo!();
+        match directive {
+            ClientDirective::Join {} => {
+                self.participants
+                    .insert(participant_id, ParticipantRecord::default())
+                    .and_then::<(), _>(|_existing_record| panic!("Multiple joins (TODO)"));
+            }
+            ClientDirective::Leave {} => {
+                self.remove_participant_orders(participant_id);
+                self.participants.remove(&participant_id).expect("TODO");
+            }
+            ClientDirective::SubmitProgram {
+                product_id,
+                program,
+            } => {
+                self.participants
+                    .get_mut(&participant_id)
+                    .expect("TODO")
+                    .interested_product_programs
+                    .insert(*product_id, program.clone());
+            }
+            ClientDirective::UpdateParameter {
+                product_id,
+                param_idx,
+                value,
+            } => {
+                self.participants
+                    .get_mut(&participant_id)
+                    .expect("TODO")
+                    .interested_product_parameters
+                    .get_mut(product_id)
+                    .expect("TODO")
+                    .values
+                    .insert(*param_idx, *value);
+            }
+        }
     }
 
     pub fn config(&self) -> &AuctionConfiguration {
@@ -73,7 +114,7 @@ impl Engine {
         let mut result_book = Book::new(product_id);
 
         let interested_participant_ids = self.participants.iter().filter_map(|(id, record)| {
-            if record.interested_products.contains_key(&product_id) {
+            if record.interested_product_programs.contains_key(&product_id) {
                 Some(id)
             } else {
                 None
@@ -99,13 +140,31 @@ impl Engine {
     ) {
         let participant_record = self.participants.get(&participant_id).expect("TODO");
         let participant_program = participant_record
-            .interested_products
+            .interested_product_programs
             .get(&product_id)
             .expect("TODO");
-        let mut program_instance =
-            ProgramInstance::new(participant_program, prev_book, participant_id);
+        let participant_parameters = participant_record
+            .interested_product_parameters
+            .get(&product_id)
+            .expect("TODO Parameters required");
+        let mut program_instance = ProgramInstance::new(
+            participant_program,
+            prev_book,
+            participant_id,
+            participant_parameters,
+        );
         program_instance.execute();
         program_instance.write_result_into_book(prev_book, result_book, participant_id);
+    }
+
+    fn remove_participant_orders(&mut self, participant_id: ParticipantId) {
+        for (_, book) in &mut self.product_books {
+            for (_, level) in &mut book.levels {
+                level.orders.retain(|o| o.participant != participant_id)
+            }
+        }
+        self.participants
+            .retain(|p_id, _record| *p_id != participant_id);
     }
 }
 
