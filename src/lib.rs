@@ -24,5 +24,5 @@ impl From<Price> for u64 {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ProductId(pub u64);

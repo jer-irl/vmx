@@ -49,18 +49,12 @@ where
 
         let mut notifications: Vec<(ParticipantId, ClientNotification)> = Vec::default();
         for trade in trades {
-            let seller_notification = ClientNotification::Trade {
+            let notification = ClientNotification::Trade {
                 product_id: trade.product_id,
                 quantity: trade.quantity,
                 side: Side::Offer,
             };
-            notifications.push((trade.seller, seller_notification));
-            let buyer_notification = ClientNotification::Trade {
-                product_id: trade.product_id,
-                quantity: trade.quantity,
-                side: Side::Bid,
-            };
-            notifications.push((trade.buyer, buyer_notification));
+            notifications.push((trade.participant_id, notification));
         }
 
         self.participant_pool

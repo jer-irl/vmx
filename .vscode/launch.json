@@ -1,0 +1,49 @@
+{
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "cargo test (unit)",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run"
+				],
+				"filter": {
+					"name": "vmx",
+					"kind": "lib",
+				},
+			}
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "cargo test (auction integration)",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run"
+				],
+				"filter": {
+					"kind": "test",
+					"name": "auction",
+				},
+			}
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "cargo run",
+			"cargo": {
+				"args": [
+					"build",
+					"--bin=vmx",
+				],
+				"filter": {
+					"name": "vmx",
+					"kind": "bin",
+				},
+			},
+		},
+	],
+}

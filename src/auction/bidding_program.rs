@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn construct_from_empty_book() {
         let program = vm::Program::from_instructions(&[]);
-        let book = Book::default();
+        let book = Book::new(ProductId(0));
         let instance = ProgramInstance::new(&program, &book, ParticipantId(0));
 
         assert_eq!(instance.vm_program_instance.state().array_read(1, 0), 0);
@@ -206,6 +206,7 @@ mod tests {
     fn construct_from_populated_book() {
         let program = vm::Program::from_instructions(&[]);
         let book = Book {
+            product_id: ProductId(0),
             levels: [
                 (
                     Price(1),
@@ -292,6 +293,7 @@ mod tests {
     fn write_result_into_book() {
         let program = vm::Program::from_instructions(&[]);
         let book = Book {
+            product_id: ProductId(0),
             levels: [
                 (
                     Price(1),
@@ -364,7 +366,7 @@ mod tests {
             .state_mut()
             .array_insert(10, 4, 23);
 
-        let mut result_book = Book::default();
+        let mut result_book = Book::new(ProductId(0));
         instance.write_result_into_book(&book, &mut result_book, ParticipantId(0));
         let result_book = result_book;
 

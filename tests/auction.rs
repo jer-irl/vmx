@@ -1,6 +1,7 @@
-mod common_programs;
+mod helpers;
 mod mocks;
 
+use helpers::program_builders;
 use mocks::participant::{MockParticipant, MockParticipantPool};
 use vmx::exchange::{AuctionConfiguration, Exchange};
 use vmx::vm::Program;
@@ -9,7 +10,7 @@ use vmx::{participant::ParticipantId, ProductId};
 
 #[test]
 fn program_quotes_applied() {
-    let program = Program::from_instructions(&common_programs::replace_quotes(
+    let program = Program::from_instructions(&program_builders::replace_quotes(
         Price(100),
         100,
         Price(200),

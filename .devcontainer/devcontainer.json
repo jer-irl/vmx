@@ -13,52 +13,16 @@
 	],
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
-		"editor.formatOnSave": true,
-		"resmon.show.cpufreq": false,
-		"lldb.executable": "/usr/bin/lldb",
-		// VS Code don't watch files under ./target
 		"files.watcherExclude": {
 			"**/target/**": true
 		},
+		"editor.formatOnSave": true,
+		"resmon.show.cpufreq": false,
+		"lldb.executable": "/usr/bin/lldb",
 		"rust-analyzer.updates.askBeforeDownload": false,
 		"rust-analyzer.hoverActions.references": true,
 		"rust-analyzer.lens.references": true,
 		"rust-analyzer.checkOnSave.command": "clippy",
-		"launch": {
-			"configurations": [
-				{
-					"type": "lldb",
-					"request": "launch",
-					"name": "cargo test",
-					"cargo": {
-						"args": [
-							"test",
-							"--no-run"
-						],
-						"filter": {
-							"name": "vmx",
-							"kind": "lib",
-						},
-					}
-				},
-				{
-					"type": "lldb",
-					"request": "launch",
-					"name": "cargo run",
-					"cargo": {
-						"args": [
-							"build",
-							"--bin=vmx",
-						],
-						"filter": {
-							"name": "vmx",
-							"kind": "bin",
-						},
-					},
-				},
-			],
-			"compounds": []
-		}
 	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [

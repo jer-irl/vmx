@@ -18,8 +18,8 @@ struct ParticipantRecord {
 
 pub struct Trade {
     pub product_id: ProductId,
-    pub buyer: ParticipantId,
-    pub seller: ParticipantId,
+    pub participant_id: ParticipantId,
+    pub side: Side,
     pub price: Price,
     pub quantity: u64,
 }
@@ -70,7 +70,7 @@ impl Engine {
             .product_books
             .remove(&product_id)
             .expect("Missing product ID, TODO");
-        let mut result_book = Book::default();
+        let mut result_book = Book::new(product_id);
 
         let interested_participant_ids = self.participants.iter().filter_map(|(id, record)| {
             if record.interested_products.contains_key(&product_id) {
