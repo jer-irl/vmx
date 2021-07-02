@@ -1,3 +1,5 @@
+use std::cell::{Ref, RefCell, RefMut};
+
 use vmx::participant::{Participant, ParticipantId, ParticipantPool};
 use vmx::protocol::{ClientDirective, ClientNotification};
 use vmx::vm::Program;
@@ -6,21 +8,32 @@ use vmx::ProductId;
 #[derive(Default)]
 pub struct MockParticipantPool {
     pub pending_directives: Vec<(ParticipantId, ClientDirective)>,
-    participants: Vec<MockParticipant>,
+    participants: Vec<RefCell<MockParticipant>>,
 }
 
 impl MockParticipantPool {
-    pub fn participant(&self, participant_id: ParticipantId) -> Option<&MockParticipant> {
+    pub fn participant(&self, participant_id: ParticipantId) -> Option<Ref<MockParticipant>> {
         self.participants
             .iter()
-            .find(|p| p.participant_id == participant_id)
+            .find(|p| p.borrow().participant_id == participant_id)
+            .map(|p| p.borrow())
+    }
+
+    pub fn participant_mut(
+        &self,
+        participant_id: ParticipantId,
+    ) -> Option<RefMut<MockParticipant>> {
+        self.participants
+            .iter()
+            .find(|p| p.borrow().participant_id == participant_id)
+            .map(|p| p.borrow_mut())
     }
 
     pub fn add_mock_participant(&mut self, participant: MockParticipant) {
         let participant_id = participant.participant_id;
         let product_id = participant.product_id;
         let program = participant.program.clone();
-        self.participants.push(participant);
+        self.participants.push(RefCell::new(participant));
         self.pending_directives
             .push((participant_id, ClientDirective::Join {}));
         self.pending_directives.push((
@@ -37,8 +50,9 @@ impl MockParticipantPool {
             self.participants
                 .iter_mut()
                 .map(|p| {
-                    let p_id = p.participant_id;
-                    p.pending_directives
+                    let p_id = p.borrow().participant_id;
+                    p.borrow_mut()
+                        .pending_directives
                         .drain(..)
                         .map(|directive| (p_id, directive))
                         .collect::<Vec<_>>()
@@ -56,11 +70,12 @@ impl ParticipantPool for MockParticipantPool {
 
     fn push_notifications_to_all(&mut self, notifications: &[(ParticipantId, ClientNotification)]) {
         for (participant_id, notification) in notifications {
-            let participant = self
+            let mut participant = self
                 .participants
                 .iter_mut()
-                .find(|p| p.participant_id == *participant_id)
-                .expect("TODO");
+                .find(|p| p.borrow().participant_id == *participant_id)
+                .expect("TODO")
+                .borrow_mut();
             participant.handle_notification(notification.clone());
         }
     }
@@ -83,6 +98,18 @@ impl MockParticipant {
             pending_directives: Vec::default(),
             received_notifications: Vec::default(),
         }
+    }
+
+    pub fn queue_submit_program(&mut self) {
+        self.pending_directives
+            .push(ClientDirective::SubmitProgram {
+                product_id: self.product_id,
+                program: self.program.clone(),
+            });
+    }
+
+    pub fn queue_leave(&mut self) {
+        self.pending_directives.push(ClientDirective::Leave {});
     }
 }
 

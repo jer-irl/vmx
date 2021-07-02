@@ -100,13 +100,15 @@ impl Engine {
             .collect()
     }
 
-    pub fn step_all_books(&mut self) {
-        for product_id in self.product_books.keys().cloned().collect::<Vec<_>>() {
-            self.step_book(product_id);
+    pub fn step_all_books_one_auction(&mut self) {
+        for _ in 0..self.configuration.num_bidding_rounds {
+            for product_id in self.product_books.keys().cloned().collect::<Vec<_>>() {
+                self.step_book_one_round(product_id);
+            }
         }
     }
 
-    fn step_book(&mut self, product_id: ProductId) {
+    fn step_book_one_round(&mut self, product_id: ProductId) {
         let prev_book = self
             .product_books
             .remove(&product_id)

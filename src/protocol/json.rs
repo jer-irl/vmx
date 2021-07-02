@@ -3,7 +3,7 @@ use serde_json::{self, error as serde_error};
 
 use super::{ClientDirective, ClientNotification, WireProtocol};
 use crate::auction::Side;
-use crate::ProductId;
+use crate::{Price, ProductId};
 
 pub struct JsonProtocol;
 
@@ -112,6 +112,7 @@ enum JsonClientNotification {
     Trade {
         product_id: u64,
         side: String,
+        price: u64,
         quantity: u64,
     },
 }
@@ -121,10 +122,12 @@ impl From<&ClientNotification> for JsonClientNotification {
         match n {
             ClientNotification::Trade {
                 product_id,
+                price,
                 quantity,
                 side,
             } => JsonClientNotification::Trade {
                 product_id: product_id.0,
+                price: price.0,
                 quantity: *quantity,
                 side: side.to_string(),
             },
@@ -138,6 +141,7 @@ impl From<&JsonClientNotification> for ClientNotification {
             JsonClientNotification::Trade {
                 product_id,
                 side,
+                price,
                 quantity,
             } => ClientNotification::Trade {
                 product_id: ProductId(*product_id),
@@ -146,6 +150,7 @@ impl From<&JsonClientNotification> for ClientNotification {
                     "Offer" => Side::Offer,
                     _ => panic!(),
                 },
+                price: Price(*price),
                 quantity: *quantity,
             },
         }

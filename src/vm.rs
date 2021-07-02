@@ -163,7 +163,7 @@ impl ProgramInstance {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Program {
     instructions: Vec<Instruction>,
 }
@@ -262,7 +262,7 @@ impl From<u8> for RegIdx {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Instruction {
     ArrIns {
         val: RegIdx,

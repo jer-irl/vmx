@@ -2,7 +2,7 @@ pub mod json;
 
 use crate::auction::Side;
 use crate::vm::Program;
-use crate::ProductId;
+use crate::{Price, ProductId};
 
 pub trait WireProtocol {
     type Error: std::error::Error;
@@ -16,7 +16,7 @@ pub trait WireProtocol {
     ) -> Result<Vec<u8>, Self::Error>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ClientDirective {
     Join {},
     Leave {},
@@ -31,11 +31,12 @@ pub enum ClientDirective {
     },
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ClientNotification {
     Trade {
         product_id: ProductId,
         side: Side,
+        price: Price,
         quantity: u64,
     },
 }
