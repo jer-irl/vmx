@@ -30,7 +30,6 @@ impl MockParticipantPool {
     }
 
     pub fn add_mock_participant(&mut self, participant: MockParticipant) {
-        let participant_id = participant.participant_id;
         self.participants.push(RefCell::new(participant));
     }
 

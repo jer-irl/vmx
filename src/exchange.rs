@@ -1,5 +1,5 @@
 pub use crate::auction::AuctionConfiguration;
-use crate::auction::{Engine, Side, Trade};
+use crate::auction::{Engine, Trade};
 use crate::participant::ParticipantId;
 use crate::participant::ParticipantPool;
 use crate::protocol::ClientNotification;

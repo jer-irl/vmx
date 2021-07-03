@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO
+
 use vmx::participant::{ParticipantId, ParticipantPool};
 use vmx::protocol::{ClientDirective, ClientNotification};
 use vmx::server::{ClientId, IncomingMessage, OutgoingMessage, Server};
@@ -26,7 +28,10 @@ pub struct MockServer {
 }
 
 impl ParticipantPool for MockServer {
-    fn push_notifications_to_all(&mut self, notifications: &[(ParticipantId, ClientNotification)]) {
+    fn push_notifications_to_all(
+        &mut self,
+        _notifications: &[(ParticipantId, ClientNotification)],
+    ) {
         todo!();
     }
 

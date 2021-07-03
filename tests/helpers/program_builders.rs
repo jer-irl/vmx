@@ -7,6 +7,7 @@ pub struct ProgramBuilder {
     pending_instructions: Vec<Instruction>,
 }
 
+#[allow(dead_code)]
 impl ProgramBuilder {
     pub fn new() -> Self {
         Self {
