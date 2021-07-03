@@ -1,6 +1,6 @@
 use crate::protocol::{ClientDirective, ClientNotification};
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub struct ParticipantId(pub u64);
 
 pub trait ParticipantPool {

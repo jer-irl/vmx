@@ -73,6 +73,59 @@ impl ProgramBuilder {
             .replace_or_modify_quotes(Side::Offer, true, ask, ask_quantity)
     }
 
+    pub fn replace_quotes_with_parameter_price(
+        &mut self,
+        side: Side,
+        price_parameter_idx: u64,
+        quantity: u64,
+    ) -> &mut Self {
+        let arr = match side {
+            Side::Bid => 9,
+            Side::Offer => 10,
+        };
+        self.reset_or_reuse_quotes(side, false)
+            .load_parameter_to_register(price_parameter_idx, RegIdx(14));
+        self.pending_instructions.extend([
+            Instruction::MovImm {
+                dst: RegIdx(0),
+                imm: arr,
+            },
+            Instruction::MovImm {
+                dst: RegIdx(2),
+                imm: quantity as i32,
+            },
+            Instruction::ArrIns {
+                arr: RegIdx(0),
+                idx: RegIdx(14),
+                val: RegIdx(3),
+            },
+        ]);
+        self
+    }
+
+    fn load_parameter_to_register(
+        &mut self,
+        parameter_idx: u64,
+        target_register: RegIdx,
+    ) -> &mut Self {
+        self.pending_instructions.extend([
+            Instruction::MovImm {
+                dst: RegIdx(0),
+                imm: 0,
+            },
+            Instruction::MovImm {
+                dst: RegIdx(1),
+                imm: parameter_idx as i32,
+            },
+            Instruction::ArrGet {
+                arr: RegIdx(0),
+                idx: RegIdx(1),
+                dst: target_register,
+            },
+        ]);
+        self
+    }
+
     fn replace_or_modify_quotes(
         &mut self,
         side: Side,

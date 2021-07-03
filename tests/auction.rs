@@ -130,7 +130,49 @@ fn simple_matching() {
 
 #[test]
 fn parameters_updated() {
-    todo!();
+    let seller_starting_price = Price(200);
+    let seller_ending_price = Price(100);
+    let buyer_price = Price(100);
+    let seller_price_parameter = 1;
+
+    let buyer_program = ProgramBuilder::new().replace_bids(buyer_price, 100).build();
+    let seller_program = ProgramBuilder::new()
+        .replace_quotes_with_parameter_price(Side::Offer, seller_price_parameter, 100)
+        .build();
+
+    let buyer_id = ParticipantId(1);
+    let seller_id = ParticipantId(2);
+    let product_id = ProductId(1);
+
+    let mut buyer = MockParticipant::new(buyer_id, product_id, buyer_program);
+    buyer.queue_join();
+    buyer.queue_submit_program();
+    let mut seller = MockParticipant::new(seller_id, product_id, seller_program);
+    seller.queue_join();
+    seller.queue_submit_program();
+    seller.queue_parameter_update(seller_price_parameter, seller_starting_price.0 as i64);
+    let mut participant_pool = MockParticipantPool::default();
+    participant_pool.add_mock_participant(buyer);
+    participant_pool.add_mock_participant(seller);
+
+    let mut exchange = Exchange::new(AuctionConfiguration::default(), participant_pool);
+
+    exchange.apply_participant_directives();
+    exchange.step_all_books_one_auction();
+    let trades = exchange.match_all_books();
+    assert!(trades.is_empty());
+
+    exchange
+        .participant_pool()
+        .participant_mut(seller_id)
+        .unwrap()
+        .queue_parameter_update(seller_price_parameter, seller_ending_price.0 as i64);
+
+    exchange.apply_participant_directives();
+    exchange.step_all_books_one_auction();
+    let trades = exchange.match_all_books();
+    assert_eq!(trades.len(), 2);
+    assert_eq!(trades.get(0).unwrap().price, seller_ending_price);
 }
 
 #[test]

@@ -103,6 +103,15 @@ impl MockParticipant {
     pub fn queue_leave(&mut self) {
         self.pending_directives.push(ClientDirective::Leave {});
     }
+
+    pub fn queue_parameter_update(&mut self, parameter_idx: u64, parameter_value: i64) {
+        self.pending_directives
+            .push(ClientDirective::UpdateParameter {
+                param_idx: parameter_idx,
+                product_id: self.product_id,
+                value: parameter_value,
+            });
+    }
 }
 
 impl Participant for MockParticipant {

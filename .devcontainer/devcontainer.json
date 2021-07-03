@@ -34,7 +34,8 @@
 		"hediet.vscode-drawio",
 		"davidanson.vscode-markdownlint",
 		"serayuzgur.crates",
-		"eamodio.gitlens"
+		"eamodio.gitlens",
+		"gruntfuggly.todo-tree"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
