@@ -67,7 +67,7 @@ impl Book {
                 });
                 bid_order.quantity -= matched_quantity;
                 bid_quantity_to_exhaust -= matched_quantity;
-                if offer_quantity_to_exhaust <= 0 {
+                if bid_quantity_to_exhaust <= 0 {
                     break;
                 }
             }

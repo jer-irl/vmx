@@ -60,7 +60,7 @@ where
                 product_id: trade.product_id,
                 price: trade.price,
                 quantity: trade.quantity,
-                side: Side::Offer,
+                side: trade.side,
             };
             notifications.push((trade.participant_id, notification));
         }

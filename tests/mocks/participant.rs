@@ -31,18 +31,7 @@ impl MockParticipantPool {
 
     pub fn add_mock_participant(&mut self, participant: MockParticipant) {
         let participant_id = participant.participant_id;
-        let product_id = participant.product_id;
-        let program = participant.program.clone();
         self.participants.push(RefCell::new(participant));
-        self.pending_directives
-            .push((participant_id, ClientDirective::Join {}));
-        self.pending_directives.push((
-            participant_id,
-            ClientDirective::SubmitProgram {
-                product_id,
-                program,
-            },
-        ))
     }
 
     fn drain_all_directives(&mut self) {
@@ -106,6 +95,10 @@ impl MockParticipant {
                 product_id: self.product_id,
                 program: self.program.clone(),
             });
+    }
+
+    pub fn queue_join(&mut self) {
+        self.pending_directives.push(ClientDirective::Join {});
     }
 
     pub fn queue_leave(&mut self) {

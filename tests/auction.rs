@@ -24,6 +24,17 @@ fn simple_matching() {
 
     let mut exchange = Exchange::new(AuctionConfiguration::default(), participant_pool);
 
+    exchange
+        .participant_pool()
+        .participant_mut(participant1_id)
+        .unwrap()
+        .queue_join();
+    exchange
+        .participant_pool()
+        .participant_mut(participant2_id)
+        .unwrap()
+        .queue_join();
+
     exchange.step().expect("TODO");
 
     assert_eq!(

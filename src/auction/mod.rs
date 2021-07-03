@@ -12,7 +12,7 @@ pub use bidding_program::ProgramInstance;
 pub use book::{Book, Order};
 pub use configuration::AuctionConfiguration;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ParticipantParameters {
     values: HashMap<u64, i64>,
 }
@@ -65,6 +65,9 @@ impl Engine {
                 product_id,
                 program,
             } => {
+                self.product_books
+                    .entry(*product_id)
+                    .or_insert(Book::new(*product_id));
                 self.participants
                     .get_mut(&participant_id)
                     .expect("TODO")
@@ -148,12 +151,13 @@ impl Engine {
         let participant_parameters = participant_record
             .interested_product_parameters
             .get(&product_id)
-            .expect("TODO Parameters required");
+            .map(Clone::clone)
+            .unwrap_or_default();
         let mut program_instance = ProgramInstance::new(
             participant_program,
             prev_book,
             participant_id,
-            participant_parameters,
+            &participant_parameters,
         );
         program_instance.execute();
         program_instance.write_result_into_book(prev_book, result_book, participant_id);
@@ -165,8 +169,6 @@ impl Engine {
                 level.orders.retain(|o| o.participant != participant_id)
             }
         }
-        self.participants
-            .retain(|p_id, _record| *p_id != participant_id);
     }
 }
 
