@@ -177,5 +177,20 @@ fn parameters_updated() {
 
 #[test]
 fn prevent_self_crossing() {
-    todo!();
+    let program = ProgramBuilder::new()
+        .replace_bids(Price(100), 1)
+        .replace_asks(Price(100), 1)
+        .build();
+    let mut participant = MockParticipant::new(ParticipantId(1), ProductId(1), program);
+    participant.queue_join();
+    participant.queue_submit_program();
+    let mut participant_pool = MockParticipantPool::default();
+    participant_pool.add_mock_participant(participant);
+
+    let mut exchange = Exchange::new(AuctionConfiguration::default(), participant_pool);
+
+    exchange.apply_participant_directives();
+    exchange.step_all_books_one_auction();
+    let trades = exchange.match_all_books();
+    assert_eq!(trades.len(), 0);
 }

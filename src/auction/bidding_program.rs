@@ -124,7 +124,7 @@ impl ProgramInstance {
         result_book: &mut Book,
         participant_id: ParticipantId,
     ) -> Result<(), Error> {
-        let mut temp_result_book = Book::new(ProductId(0));
+        let mut temp_result_book = Book::new(result_book.product_id);
 
         let mut populate_previous_orders =
             |bounds_accessor: fn(&Book, ParticipantId) -> Option<(Price, Price)>,
@@ -166,6 +166,7 @@ impl ProgramInstance {
                 .vm_program_instance
                 .state()
                 .iter_touched_values(array_idx)
+                .filter(|(i, _v)| *i > 0)
             {
                 let order = Order {
                     participant: participant_id,
@@ -511,6 +512,43 @@ mod tests {
             .vm_program_instance
             .state_mut()
             .array_insert(9, 200, 100);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(10, 0, 1);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(10, 100, 100);
+
+        let mut result_book = Book::new(ProductId(1));
+        let result = instance.write_result_into_book(&book, &mut result_book, ParticipantId(0));
+        assert_eq!(result, Err(Error::SelfCrossing));
+        let result_book = result_book;
+
+        assert_eq!(result_book.bid_bounds(), None);
+        assert_eq!(result_book.offer_bounds(), None);
+    }
+
+    #[test]
+    fn prevent_self_crossing_same_prices() {
+        let program = Program::from_instructions(&[]);
+        let book = Book::new(ProductId(1));
+        let mut instance = ProgramInstance::new(
+            &program,
+            &book,
+            ParticipantId(0),
+            &ParticipantParameters::default(),
+        );
+        // Insert new bid at 100, new offer at 100
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(9, 0, 1);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(9, 100, 100);
         instance
             .vm_program_instance
             .state_mut()

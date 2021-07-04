@@ -151,7 +151,8 @@ impl Engine {
                 &prev_book,
                 &mut result_book,
             )
-            .expect("TODO handle self matching");
+            .unwrap_or(());
+            // TODO handle self matching
         }
         self.product_books.insert(product_id, result_book);
     }

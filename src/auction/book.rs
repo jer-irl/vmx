@@ -122,17 +122,19 @@ impl Book {
                 .orders
                 .get_mut(existing_order_idx)
                 .unwrap();
-            existing_order.quantity += order.quantity;
-            if existing_order.quantity <= 0 {
-                self.levels
-                    .get_mut(&order.price)
-                    .unwrap()
-                    .orders
-                    .remove(existing_order_idx);
+            if existing_order.side == order.side {
+                existing_order.quantity += order.quantity;
+                if existing_order.quantity <= 0 {
+                    self.levels
+                        .get_mut(&order.price)
+                        .unwrap()
+                        .orders
+                        .remove(existing_order_idx);
+                }
+                return;
             }
-        } else {
-            self.insert_order(order);
         }
+        self.insert_order(order);
     }
 
     pub fn insert_order(&mut self, order: Order) {
