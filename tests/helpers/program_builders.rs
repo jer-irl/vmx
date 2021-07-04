@@ -97,7 +97,7 @@ impl ProgramBuilder {
             Instruction::ArrIns {
                 arr: RegIdx(0),
                 idx: RegIdx(14),
-                val: RegIdx(3),
+                val: RegIdx(2),
             },
         ]);
         self

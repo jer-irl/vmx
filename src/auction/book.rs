@@ -108,14 +108,28 @@ impl Book {
     }
 
     pub fn update_or_insert_order(&mut self, order: Order) {
-        let found_existing = self.levels.get_mut(&order.price).and_then(|level| {
+        let found_existing_idx = self.levels.get_mut(&order.price).and_then(|level| {
             level
                 .orders
                 .iter_mut()
-                .find(|possible_match| possible_match.participant == order.participant)
+                .position(|possible_match| possible_match.participant == order.participant)
         });
-        if let Some(existing_order) = found_existing {
+        if let Some(existing_order_idx) = found_existing_idx {
+            let mut existing_order = self
+                .levels
+                .get_mut(&order.price)
+                .unwrap()
+                .orders
+                .get_mut(existing_order_idx)
+                .unwrap();
             existing_order.quantity += order.quantity;
+            if existing_order.quantity <= 0 {
+                self.levels
+                    .get_mut(&order.price)
+                    .unwrap()
+                    .orders
+                    .remove(existing_order_idx);
+            }
         } else {
             self.insert_order(order);
         }

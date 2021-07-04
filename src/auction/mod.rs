@@ -12,6 +12,25 @@ pub use bidding_program::ProgramInstance;
 pub use book::{Book, Order};
 pub use configuration::AuctionConfiguration;
 
+#[derive(Debug)]
+pub enum Error {
+    SelfMatching,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+impl std::error::Error for Error {}
+impl From<bidding_program::Error> for Error {
+    fn from(e: bidding_program::Error) -> Self {
+        match e {
+            bidding_program::Error::SelfCrossing => Self::SelfMatching,
+        }
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct ParticipantParameters {
     values: HashMap<u64, i64>,
@@ -83,8 +102,8 @@ impl Engine {
                     .get_mut(&participant_id)
                     .expect("TODO")
                     .interested_product_parameters
-                    .get_mut(product_id)
-                    .expect("TODO")
+                    .entry(*product_id)
+                    .or_default()
                     .values
                     .insert(*param_idx, *value);
             }
@@ -131,7 +150,8 @@ impl Engine {
                 product_id,
                 &prev_book,
                 &mut result_book,
-            );
+            )
+            .expect("TODO handle self matching");
         }
         self.product_books.insert(product_id, result_book);
     }
@@ -142,7 +162,7 @@ impl Engine {
         product_id: ProductId,
         prev_book: &Book,
         result_book: &mut Book,
-    ) {
+    ) -> Result<(), Error> {
         let participant_record = self.participants.get(&participant_id).expect("TODO");
         let participant_program = participant_record
             .interested_product_programs
@@ -160,7 +180,9 @@ impl Engine {
             &participant_parameters,
         );
         program_instance.execute();
-        program_instance.write_result_into_book(prev_book, result_book, participant_id);
+        program_instance
+            .write_result_into_book(prev_book, result_book, participant_id)
+            .map_err(Error::from)
     }
 
     fn remove_participant_orders(&mut self, participant_id: ParticipantId) {

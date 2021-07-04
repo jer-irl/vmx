@@ -2,6 +2,19 @@ use super::{Book, Order, ParticipantParameters, ProductId, Side};
 use crate::participant::ParticipantId;
 use crate::{vm, Price};
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    SelfCrossing,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for Error {}
+
 /// Input
 /// ```{text}
 /// arr0[param_idx]: parameter value
@@ -110,7 +123,9 @@ impl ProgramInstance {
         prev_book: &Book,
         result_book: &mut Book,
         participant_id: ParticipantId,
-    ) {
+    ) -> Result<(), Error> {
+        let mut temp_result_book = Book::new(ProductId(0));
+
         let mut populate_previous_orders =
             |bounds_accessor: fn(&Book, ParticipantId) -> Option<(Price, Price)>,
              side,
@@ -125,7 +140,7 @@ impl ProgramInstance {
                             quantity: quantity_accessor(prev_book, price, participant_id),
                             price,
                         };
-                        result_book.insert_order(order);
+                        temp_result_book.insert_order(order);
                     }
                 }
             };
@@ -159,19 +174,39 @@ impl ProgramInstance {
                     quantity: val,
                     price: Price(idx),
                 };
-                result_book.update_or_insert_order(order);
+                temp_result_book.update_or_insert_order(order);
             }
         };
 
         add_new_orders(9, Side::Bid);
         add_new_orders(10, Side::Offer);
+
+        if let (Some((_min_bid, max_bid)), Some((min_offer, _max_offer))) = (
+            temp_result_book.bid_bounds(),
+            temp_result_book.offer_bounds(),
+        ) {
+            if max_bid >= min_offer {
+                return Err(Error::SelfCrossing);
+            }
+        }
+
+        for order in temp_result_book
+            .levels
+            .into_iter()
+            .map(|(_p, l)| l.orders.into_iter())
+            .flatten()
+        {
+            result_book.update_or_insert_order(order);
+        }
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::book::Level;
-    use super::super::*;
+    use super::super::Program;
     use super::*;
 
     #[test]
@@ -419,7 +454,9 @@ mod tests {
             .array_insert(10, 4, 23);
 
         let mut result_book = Book::new(ProductId(0));
-        instance.write_result_into_book(&book, &mut result_book, ParticipantId(0));
+        instance
+            .write_result_into_book(&book, &mut result_book, ParticipantId(0))
+            .unwrap();
         let result_book = result_book;
 
         assert_eq!(result_book.bid_bounds(), Some((Price(1), Price(2))));
@@ -453,5 +490,42 @@ mod tests {
             result_book.offer_quantity_at_price_for_participant(Price(4), ParticipantId(0)),
             23
         );
+    }
+
+    #[test]
+    fn prevent_self_crossing_different_prices() {
+        let program = Program::from_instructions(&[]);
+        let book = Book::new(ProductId(1));
+        let mut instance = ProgramInstance::new(
+            &program,
+            &book,
+            ParticipantId(0),
+            &ParticipantParameters::default(),
+        );
+        // Insert new bid at 200, new offer at 100
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(9, 0, 1);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(9, 200, 100);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(10, 0, 1);
+        instance
+            .vm_program_instance
+            .state_mut()
+            .array_insert(10, 100, 100);
+
+        let mut result_book = Book::new(ProductId(1));
+        let result = instance.write_result_into_book(&book, &mut result_book, ParticipantId(0));
+        assert_eq!(result, Err(Error::SelfCrossing));
+        let result_book = result_book;
+
+        assert_eq!(result_book.bid_bounds(), None);
+        assert_eq!(result_book.offer_bounds(), None);
     }
 }
